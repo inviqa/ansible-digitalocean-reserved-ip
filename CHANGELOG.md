@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Switched Jenkins live tests to the shared
+  `digitalocean-ansible-roles-oauth-token` credential used by DigitalOcean
+  Ansible role repositories.
+
 ## [0.1.0] - 2026-05-13 First release
 
 ### Added

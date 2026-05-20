@@ -1,5 +1,5 @@
 def failureMessages = []
-def DO_TOKEN_CREDENTIAL_ID = 'digitalocean-reserved-ip-oauth-token'
+def DO_TOKEN_CREDENTIAL_ID = 'digitalocean-ansible-roles-oauth-token'
 def DO_SSH_KEYS_CREDENTIAL_ID = 'digitalocean-reserved-ip-ssh-key-ids'
 def SSH_PRIVATE_KEY_CREDENTIAL_ID = 'digitalocean-reserved-ip-test-ssh-private-key'
 def SLACK_TOKEN_CREDENTIAL_ID = 'inviqa-slack-integration-token'

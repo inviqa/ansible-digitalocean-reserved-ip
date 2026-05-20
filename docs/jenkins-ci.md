@@ -63,7 +63,7 @@ The credential ID placeholders are defined at the top of `Jenkinsfile`:
 
 | Placeholder | Jenkins credential type | Purpose |
 | --- | --- | --- |
-| `digitalocean-reserved-ip-oauth-token` | Secret text | DigitalOcean API token. |
+| `digitalocean-ansible-roles-oauth-token` | Secret text | Shared DigitalOcean API token for Ansible role live tests. |
 | `digitalocean-reserved-ip-ssh-key-ids` | Secret text | Comma or newline separated DigitalOcean SSH key IDs or fingerprints. |
 | `digitalocean-reserved-ip-test-ssh-private-key` | SSH username with private key | Private key loaded for live test droplet access. |
 | `inviqa-slack-integration-token` | Secret text | Slack token used for Jenkins failure notifications. |
