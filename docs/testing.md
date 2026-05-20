@@ -39,8 +39,8 @@ curl --output ./ws --location "https://github.com/my127/workspace/releases/downl
 chmod +x ws && sudo mv ws /usr/local/bin/ws
 ```
 
-Live commands read local attributes from `workspace.override.yml`. Create it
-from the example first:
+Workspace commands read local attributes from `workspace.override.yml`. Create
+it from the example first:
 
 ```text
 cp workspace.override.yml.example workspace.override.yml
@@ -55,20 +55,18 @@ must match private keys loaded in the forwarded SSH agent.
 The harness validates that match before creating a Droplet and uses the
 selected DigitalOcean public key to steer SSH agent authentication.
 
-The playbooks still support the legacy local override file for direct Ansible
-runs:
+For direct Ansible runs without Workspace, create the gitignored test variable
+file instead:
 
 ```text
 cp tests/test_variables.example.yml tests/test_variables.yml
 ```
 
-For direct Ansible runs, set your DigitalOcean API token and at least one SSH
-key ID, fingerprint, or name:
-
 ```yaml
 do_test_api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 do_ssh_keys:
   - "12345678"
+do_test_project_name: "Inviqa Sandbox"
 ```
 
 To list available SSH key IDs and fingerprints with `doctl`:
@@ -89,8 +87,8 @@ key whose private key is available for root login.
 
 If `DIGITAL_OCEAN_API_TOKEN` is exported in the current shell, it takes
 precedence over `do_test_api_token` in `test_variables.yml`.
-Likewise, `DIGITAL_OCEAN_SSH_KEYS` from Workspace or the shell takes precedence
-over `do_ssh_keys` in `test_variables.yml`.
+Likewise, `DIGITAL_OCEAN_SSH_KEYS` from Workspace, the shell, or Jenkins takes
+precedence over `do_ssh_keys` in `test_variables.yml`.
 
 ## Workspace Commands
 
@@ -118,8 +116,8 @@ ws cleanup-live ubuntu
 
 Both `ws console` and `ws ansible-playbook` load live-test environment values
 from `workspace.override.yml` and forward them into the `console` container.
-Other Workspace commands compose those entrypoints instead of repeating Docker
-environment wiring.
+The live playbooks also load `tests/test_variables.yml` directly, so direct
+Ansible execution can use test variables without Workspace.
 
 Use `ws syntax` for syntax checks and `ws ansible-lint` for role linting.
 
@@ -260,7 +258,8 @@ variables.
 - `workspace.override.yml` and `tests/test_variables.yml` must stay untracked
   because they may contain local credentials.
 - Live-test droplets are assigned to the DigitalOcean project configured by
-  `test.digitalocean.project_name` in `workspace.override.yml`.
+  `test.digitalocean.project_name` in `workspace.override.yml`, or by
+  `do_test_project_name` in `tests/test_variables.yml` for direct Ansible runs.
 - Test droplets are named `ansible-digitalocean-reserved-ip-<inventory-name>`
   and tagged with `ANSIBLE-TEST` for cleanup.
 - Cleanup also recognises the previous `<inventory-name>-test-with-ansible`

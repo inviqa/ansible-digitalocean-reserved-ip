@@ -261,8 +261,8 @@ install command, and direct Ansible execution with `--limit`.
   `ws github release check`, `ws github release publish`,
   `ws ansible-galaxy check-token`, `ws ansible-galaxy info`, and
   `ws ansible-galaxy publish`.
-- Galaxy publishing reads `ANSIBLE_GALAXY_TOKEN` or
-  `ansible.galaxy.token` from `workspace.override.yml`; Jenkins uses the
+- Galaxy publishing reads `ansible.galaxy.token` from
+  `workspace.override.yml` or `ANSIBLE_GALAXY_TOKEN`; Jenkins uses the
   `ansible-roles-galaxy-token` Secret text credential.
 
 ## Repository guidance

@@ -19,8 +19,8 @@
 - Reduced the Workspace destroy timeout so local test containers stop faster.
 - Added a Workspace-provided DigitalOcean project name for live-test droplets
   and assigned created test droplets to that project.
-- Documented that DigitalOcean live-test project assignment belongs in
-  `workspace.override.yml`, not test variable files.
+- Documented the preferred `workspace.override.yml` live-test configuration
+  path alongside `tests/test_variables.yml` for direct Ansible execution.
 
 ### Changed
 
@@ -79,7 +79,8 @@
   operating-system-specific persistence flow.
 - Clarified the README origin note without referencing future publication.
 - Sanitized the tracked live-test variable file so real credentials are read
-  from Workspace overrides, environment variables, or Jenkins credentials.
+  from Workspace overrides, environment variables, `tests/test_variables.yml`,
+  or Jenkins credentials.
 
 ## [0.1.0] - 2026-05-13 First release
 
