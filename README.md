@@ -263,7 +263,7 @@ cleanup, the Workspace CLI install command, and direct Ansible execution with
   `ws ansible-galaxy publish`.
 - Galaxy publishing reads `ANSIBLE_GALAXY_TOKEN` or
   `ansible.galaxy.token` from `workspace.override.yml`; Jenkins uses the
-  `ansible-digitalocean-reserved-ip-galaxy-token` Secret text credential.
+  `ansible-roles-galaxy-token` Secret text credential.
 
 ## Repository guidance
 

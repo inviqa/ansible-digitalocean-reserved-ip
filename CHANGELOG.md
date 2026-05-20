@@ -8,6 +8,8 @@
 - Reduced duplicate Jenkins credential bindings and standardized release
   credentials on the expanded `GITHUB_TOKEN`, `DIGITAL_OCEAN_API_TOKEN`, and
   `DIGITAL_OCEAN_SSH_KEYS` environment names.
+- Standardized the Jenkins Ansible Galaxy credential ID on the shared
+  `ansible-roles-galaxy-token` credential.
 - Kept `DO_OAUTH_TOKEN` as a backward-compatible local input fallback for
   DigitalOcean API credentials.
 - Simplified the Workspace console Dockerfile requirement-copy paths to generic
@@ -51,6 +53,13 @@
   SSH proxy configuration during direct Ansible runs.
 - Reorganized the role task flow so the main task file and outbound routing
   setup delegate to focused task files.
+- Avoided Ansible `reset_connection` conditional warnings during live outbound
+  routing tests and waited for the post-cutover SSH connection before
+  continuing Debian-family routing configuration.
+- Clarified the route-cutover task names so TCP port readiness and Ansible SSH
+  session readiness are distinct in live-test output.
+- Documented when agents must use dynamic Ansible task includes to keep
+  conditional logic away from `reset_connection` meta tasks.
 - Extracted shared live-test override loading and DigitalOcean credential
   validation into reusable test task files.
 - Documented the Ansible Galaxy release workflow and the Jenkins credentials

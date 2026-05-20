@@ -125,6 +125,12 @@ Required:
     credential-style environment values. Keep live-test enablement and target,
     release version selection, and GitHub/Galaxy publication gates as build
     parameters or an equivalent explicit Jenkins input surface.
+20. Use `include_tasks` instead of `import_tasks` when the included task file
+    contains `ansible.builtin.meta` tasks such as `reset_connection` and the
+    include site has a `when` condition. Static imports propagate the condition
+    to every imported task, and Ansible warns because `reset_connection` does
+    not support `when`; dynamic includes keep the condition on the include
+    boundary.
 
 ## Changelog Policy (Always Required)
 

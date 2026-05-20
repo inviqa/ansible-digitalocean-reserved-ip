@@ -3,7 +3,7 @@
   ansible.builtin.import_tasks: prepare_outbound_routing.yml
 
 - name: Switch Ansible management to the Reserved IP
-  ansible.builtin.import_tasks: switch_ansible_to_reserved_ip.yml
+  ansible.builtin.include_tasks: switch_ansible_to_reserved_ip.yml
   when:
     - can_retrieve_anchor_gateway_associated_to_this_droplet
     - anchor_gateway_associated_to_droplet is defined
@@ -12,7 +12,7 @@
     - do_droplet_reserved_ip_address | length > 0
 
 - name: Apply immediate Debian-family routing through the Reserved IP
-  ansible.builtin.import_tasks: apply_immediate_routing.yml
+  ansible.builtin.include_tasks: apply_immediate_routing.yml
   when:
     - can_retrieve_anchor_gateway_associated_to_this_droplet
     - anchor_gateway_associated_to_droplet is defined

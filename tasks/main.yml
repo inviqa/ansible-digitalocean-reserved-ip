@@ -17,7 +17,7 @@
   ansible.builtin.import_tasks: retrieve_anchor_ip.yml
 
 - name: Configure outbound routing via Reserved IP when enabled
-  ansible.builtin.import_tasks: setup_outbound_routing.yml
+  ansible.builtin.include_tasks: setup_outbound_routing.yml
   when:
     - digitalocean_reserved_ip_enable_outbound_routing | bool
     - reserved_ip_is_assigned_to_this_droplet

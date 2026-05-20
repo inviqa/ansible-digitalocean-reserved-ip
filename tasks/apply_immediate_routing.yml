@@ -9,7 +9,7 @@
     executable: /bin/bash
   changed_when: false
 
-- name: Wait for SSH to return on the Reserved IP after route cutover
+- name: Wait for the Reserved IP TCP SSH port after route cutover
   ansible.builtin.wait_for:
     host: "{{ do_droplet_reserved_ip_address }}"
     port: "{{ ansible_port | default(22) }}"
@@ -20,3 +20,9 @@
 
 - name: Reset the SSH connection after the route cutover completes
   ansible.builtin.include_tasks: reset_connection.yml
+
+- name: Wait for Ansible SSH over the Reserved IP after resetting the connection
+  ansible.builtin.wait_for_connection:
+    delay: 2
+    sleep: 3
+    timeout: 120
