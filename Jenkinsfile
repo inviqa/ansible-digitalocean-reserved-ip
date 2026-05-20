@@ -156,10 +156,10 @@ pipeline {
                         fields: fields
                     ]
                 ]
-                if (env.SLACK_NOTIFICATIONS_ENABLED != 'true') {
-                    echo "Slack ${currentBuild.currentResult} notification skipped; SLACK_NOTIFICATIONS_ENABLED is false."
-                } else {
+                if (env.SLACK_NOTIFICATIONS_ENABLED == 'true') {
                     slackSend(channel: env.SLACK_NOTIFICATION_CHANNEL, color: 'danger', attachments: attachments, tokenCredentialId: env.SLACK_TOKEN_CREDENTIAL_ID)
+                } else {
+                    echo "Slack ${currentBuild.currentResult} notification skipped; SLACK_NOTIFICATIONS_ENABLED is false."
                 }
             }
         }
