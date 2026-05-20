@@ -37,6 +37,10 @@
   top-level environment defaults.
 - Renamed the role input variables to the `digitalocean_reserved_ip_*` prefix
   while keeping fallback support for the previous `digital_ocean_*` names.
+- Moved test harness guidance into `docs/testing.md` and left
+  `tests/README.md` as a pointer to the maintained documentation.
+- Aligned the testing documentation with the JumpCloud role structure by adding
+  Jenkinsfile lint guidance and a live-test flow diagram.
 - Documented the Ansible Galaxy release workflow and the Jenkins credentials
   used for GitHub and Galaxy publication.
 - Sanitized the tracked live-test variable file so real credentials are read

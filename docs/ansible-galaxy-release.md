@@ -41,7 +41,7 @@ markdownlint -c ~/.markdownlint.json README.md CHANGELOG.md docs/ansible-galaxy-
 
 For releases that change runtime behavior, also run the relevant syntax,
 Jenkins, or live-test workflows documented in
-[Test harness](../tests/README.md) and [Jenkins CI](jenkins-ci.md).
+[Testing](testing.md) and [Jenkins CI](jenkins-ci.md).
 
 ## GitHub Release
 

@@ -18,6 +18,7 @@ Reserved IP role for future publication on Ansible Galaxy.
 - [Exported facts](#exported-facts)
 - [Outbound routing](#outbound-routing)
 - [Examples](#examples)
+- [Testing](#testing)
 - [Development notes](#development-notes)
 - [Continuous integration](#continuous-integration)
 - [Release workflow](#release-workflow)
@@ -201,13 +202,19 @@ will not modify the droplet's routing table.
 If you install the published role under its current namespace, replace
 `digitalocean_reserved_ip` with `inviqa.digitalocean_reserved_ip`.
 
+## Testing
+
+The current test workflow is documented in [docs/testing.md](docs/testing.md).
+It covers Workspace commands, DigitalOcean live tests, Jenkinsfile lint,
+cleanup, the Workspace CLI install command, and direct Ansible execution with
+`--limit`.
+
 ## Development notes
 
 - `tests/` contains the copied integration harness and is being refreshed for
   the new role name.
-- `tests/README.md` contains the current live test workflow, including the
-  exact first-run command sequence for Debian-first validation, full-matrix
-  execution, and cleanup.
+- `tests/README.md` points to the maintained testing documentation in
+  `docs/testing.md`.
 - `workspace.yml` provides the preferred local test and release command surface:
   `ws ansible-lint`, `ws syntax`, `ws test-live all`, and the release
   preflight commands documented below.
