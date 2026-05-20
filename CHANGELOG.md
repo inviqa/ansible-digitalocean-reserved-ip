@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Live Tests
+
+- Added a Workspace-provided DigitalOcean project name for live-test droplets
+  and assigned created test droplets to that project.
+- Documented that DigitalOcean live-test project assignment belongs in
+  `workspace.override.yml`, not test variable files.
+
 ## [0.2.0] - 2026-05-20
 
 ### CI

@@ -23,6 +23,17 @@
   delegate_to: localhost
   register: do_create
 
+- name: Assign the test droplet to the DigitalOcean project
+  digitalocean.cloud.project_resources:
+    state: present
+    project_name: "{{ do_test_project_name }}"
+    token: "{{ digital_ocean_api_token }}"
+    resources:
+      - "do:droplet:{{ do_create.droplet.id }}"
+  delegate_to: localhost
+  no_log: true
+  when: do_test_project_name | length > 0
+
 - name: Preserve the legacy droplet result shape for the test playbooks
   ansible.builtin.set_fact:
     do:

@@ -4,5 +4,6 @@
 
 attribute('test.digitalocean.api_token'): ''
 attribute('test.digitalocean.ssh_keys'): []
+attribute('test.digitalocean.project_name'): 'Inviqa Sandbox'
 attribute('ansible.galaxy.token'): ''
 attribute('github.api_token'): ''

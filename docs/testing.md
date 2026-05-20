@@ -46,12 +46,12 @@ from the example first:
 cp workspace.override.yml.example workspace.override.yml
 ```
 
-Set `test.digitalocean.api_token` and `test.digitalocean.ssh_keys`. SSH key
-selectors can be IDs, fingerprints, or names. In `workspace.override.yml`,
-`test.digitalocean.ssh_keys` is a list. When passed through environment
-variables or Jenkins credentials, multiple selectors can be comma or newline
-separated. The selected DigitalOcean SSH keys must match private keys loaded in
-the forwarded SSH agent.
+Set `test.digitalocean.api_token`, `test.digitalocean.ssh_keys`, and
+`test.digitalocean.project_name`. SSH key selectors can be IDs, fingerprints,
+or names. In `workspace.override.yml`, `test.digitalocean.ssh_keys` is a list.
+When passed through environment variables or Jenkins credentials, multiple
+selectors can be comma or newline separated. The selected DigitalOcean SSH keys
+must match private keys loaded in the forwarded SSH agent.
 The harness validates that match before creating a Droplet and uses the
 selected DigitalOcean public key to steer SSH agent authentication.
 
@@ -259,6 +259,8 @@ variables.
 - The harness connects to test droplets as `root`.
 - `workspace.override.yml` and `tests/test_variables.yml` must stay untracked
   because they may contain local credentials.
+- Live-test droplets are assigned to the DigitalOcean project configured by
+  `test.digitalocean.project_name` in `workspace.override.yml`.
 - Test droplets are named `ansible-digitalocean-reserved-ip-<inventory-name>`
   and tagged with `ANSIBLE-TEST` for cleanup.
 - Cleanup also recognises the previous `<inventory-name>-test-with-ansible`

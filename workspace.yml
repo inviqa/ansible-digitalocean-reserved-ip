@@ -7,6 +7,7 @@ workspace('ansible-digitalocean-reserved-ip'):
 
 attribute('test.digitalocean.api_token'): ''
 attribute('test.digitalocean.ssh_keys'): []
+attribute('test.digitalocean.project_name'): ''
 attribute('ansible.galaxy.token'): ''
 attribute('github.api_token'): ''
 
@@ -97,6 +98,7 @@ command('console %', 'console'):
   env:
     ANSIBLE_GALAXY_TOKEN: "= @('ansible.galaxy.token') ?: env('ANSIBLE_GALAXY_TOKEN') ?: ''"
     DIGITAL_OCEAN_API_TOKEN: "= @('test.digitalocean.api_token') ?: env('DIGITAL_OCEAN_API_TOKEN') ?: env('DO_OAUTH_TOKEN') ?: ''"
+    DIGITAL_OCEAN_PROJECT_NAME: "= @('test.digitalocean.project_name') ?: env('DIGITAL_OCEAN_PROJECT_NAME') ?: ''"
     DIGITAL_OCEAN_SSH_KEYS: "= @('test.digitalocean.ssh_keys') ? join(',', @('test.digitalocean.ssh_keys')) : env('DIGITAL_OCEAN_SSH_KEYS') ?: ''"
     GITHUB_TOKEN: "= @('github.api_token') ?: env('GITHUB_TOKEN') ?: ''"
     HOST_SSH_AUTH_SOCK: "= env('HOST_SSH_AUTH_SOCK') ?: env('SSH_AUTH_SOCK') ?: '/run/host-services/ssh-auth.sock'"
@@ -117,6 +119,7 @@ command('console %', 'console'):
     passthru docker compose "${docker_exec_args[@]}" \
       -e ANSIBLE_GALAXY_TOKEN \
       -e DIGITAL_OCEAN_API_TOKEN \
+      -e DIGITAL_OCEAN_PROJECT_NAME \
       -e DIGITAL_OCEAN_SSH_KEYS \
       -e GITHUB_TOKEN \
       -e HOME=/home/ansible \

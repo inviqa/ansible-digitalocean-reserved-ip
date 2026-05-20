@@ -230,8 +230,8 @@ If you install the published role under its current namespace, replace
 
 The current test workflow is documented in [docs/testing.md](docs/testing.md).
 It covers Workspace commands, DigitalOcean live tests, Jenkinsfile lint,
-cleanup, the Workspace CLI install command, and direct Ansible execution with
-`--limit`.
+cleanup, DigitalOcean project assignment for test droplets, the Workspace CLI
+install command, and direct Ansible execution with `--limit`.
 
 ## Development notes
 
