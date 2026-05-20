@@ -11,3 +11,6 @@ debian-13 do_image_id=debian-13-x64
 centos
 ubuntu
 debian
+
+[digital_ocean:vars]
+ansible_ssh_extra_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand=none'

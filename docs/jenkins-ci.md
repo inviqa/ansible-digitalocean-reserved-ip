@@ -51,10 +51,10 @@ than Jenkins pipeline stages.
 
 ## Jenkins Workspace agent
 
-The Jenkinsfile follows the Workspace-first pattern used by the sibling Ansible
-role repositories. Jenkins runs on a `linux-amd64` node where the Workspace CLI
-is already available. The pipeline calls `ws enable`, and Workspace starts the
-Docker Compose services that provide the Ansible execution environment.
+The Jenkinsfile follows this repository's Workspace-first maintenance pattern.
+Jenkins runs on a `linux-amd64` node where the Workspace CLI is already
+available. The pipeline calls `ws enable`, and Workspace starts the Docker
+Compose services that provide the Ansible execution environment.
 
 The Workspace `console` image installs the Python dependencies from
 `tests/requirements.txt` and Ansible collections from `tests/requirements.yml`.

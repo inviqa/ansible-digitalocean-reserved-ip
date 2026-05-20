@@ -46,10 +46,14 @@ from the example first:
 cp workspace.override.yml.example workspace.override.yml
 ```
 
-Set `test.digitalocean.api_token` and `test.digitalocean.ssh_keys`. The SSH key
-selector can be comma separated when it is passed through Workspace or Jenkins.
-The selected DigitalOcean SSH key must match a private key loaded in the
-forwarded SSH agent.
+Set `test.digitalocean.api_token` and `test.digitalocean.ssh_keys`. SSH key
+selectors can be IDs, fingerprints, or names. In `workspace.override.yml`,
+`test.digitalocean.ssh_keys` is a list. When passed through environment
+variables or Jenkins credentials, multiple selectors can be comma or newline
+separated. The selected DigitalOcean SSH keys must match private keys loaded in
+the forwarded SSH agent.
+The harness validates that match before creating a Droplet and uses the
+selected DigitalOcean public key to steer SSH agent authentication.
 
 The playbooks still support the legacy local override file for direct Ansible
 runs:
@@ -59,7 +63,7 @@ cp tests/test_variables.example.yml tests/test_variables.yml
 ```
 
 For direct Ansible runs, set your DigitalOcean API token and at least one SSH
-key ID or fingerprint:
+key ID, fingerprint, or name:
 
 ```yaml
 do_test_api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -85,6 +89,8 @@ key whose private key is available for root login.
 
 If `DIGITAL_OCEAN_API_TOKEN` is exported in the current shell, it takes
 precedence over `do_test_api_token` in `test_variables.yml`.
+Likewise, `DIGITAL_OCEAN_SSH_KEYS` from Workspace or the shell takes precedence
+over `do_ssh_keys` in `test_variables.yml`.
 
 ## Workspace Commands
 
@@ -147,12 +153,17 @@ ansible-playbook -i tests/inventory tests/playbook.yml --limit centos
 ansible-playbook -i tests/inventory tests/playbook.yml --limit ubuntu
 ```
 
+`tests/inventory` disables local SSH proxy configuration for the temporary
+DigitalOcean droplets so the live test connects directly to the provisioned
+hosts.
+
 The live playbook:
 
 - creates one small DigitalOcean droplet for each target OS
 - waits for SSH
 - installs Python if the image needs it
 - allocates or attaches the Reserved IP
+- validates SSH agent access with the selected DigitalOcean SSH key
 - verifies outbound routing through the Reserved IP
 
 The live-test path creates real provider resources, validates them, and then

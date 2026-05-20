@@ -19,6 +19,12 @@
         file: "{{ playbook_dir }}/test_variables.yml"
       when: local_test_variables_file.stat.exists
 
+    - name: Prefer Workspace DigitalOcean SSH key selectors
+      ansible.builtin.set_fact:
+        do_ssh_keys: "{{ digitalocean_reserved_ip_test_do_ssh_keys_from_env }}"
+      when: digitalocean_reserved_ip_test_do_ssh_keys_from_env | length > 0
+      no_log: true
+
     - name: Check whether a DigitalOcean API token is available for tests
       ansible.builtin.assert:
         that:
@@ -59,8 +65,6 @@
 - name: Install Python on test droplets
   hosts: digital_ocean
   gather_facts: false
-  vars:
-    ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
   tasks:
     - name: Install Python for Ansible requirements
       ansible.builtin.import_tasks: tasks/install_python.yml

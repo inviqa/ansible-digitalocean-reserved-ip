@@ -6,9 +6,13 @@ workspace('ansible-digitalocean-reserved-ip'):
 # Copy them to workspace.override.yml with real values for live testing.
 
 attribute('test.digitalocean.api_token'): ''
-attribute('test.digitalocean.ssh_keys'): ''
+attribute('test.digitalocean.ssh_keys'): []
 attribute('ansible.galaxy.token'): ''
 attribute('github.api_token'): ''
+
+function('join', [separator, array]): |
+  #!php
+  = is_array($array) ? implode($separator, $array) : $array;
 
 command('enable %', 'enable'):
   description: "Usage: ws enable [service]. Start all services or one service."
@@ -86,14 +90,14 @@ command('destroy', 'destroy'):
       --rmi local \
       --volumes \
       --remove-orphans \
-      --timeout 120
+      --timeout 10
 
 command('console %', 'console'):
   description: "Usage: ws console [command]. Run a command in the Ansible console container."
   env:
     ANSIBLE_GALAXY_TOKEN: "= @('ansible.galaxy.token') ?: env('ANSIBLE_GALAXY_TOKEN') ?: ''"
     DIGITAL_OCEAN_API_TOKEN: "= @('test.digitalocean.api_token') ?: env('DIGITAL_OCEAN_API_TOKEN') ?: env('DO_OAUTH_TOKEN') ?: ''"
-    DIGITAL_OCEAN_SSH_KEYS: "= @('test.digitalocean.ssh_keys') ?: env('DIGITAL_OCEAN_SSH_KEYS') ?: ''"
+    DIGITAL_OCEAN_SSH_KEYS: "= @('test.digitalocean.ssh_keys') ? join(',', @('test.digitalocean.ssh_keys')) : env('DIGITAL_OCEAN_SSH_KEYS') ?: ''"
     GITHUB_TOKEN: "= @('github.api_token') ?: env('GITHUB_TOKEN') ?: ''"
     HOST_SSH_AUTH_SOCK: "= env('HOST_SSH_AUTH_SOCK') ?: env('SSH_AUTH_SOCK') ?: '/run/host-services/ssh-auth.sock'"
     PARAMETER: = input.argument('%')

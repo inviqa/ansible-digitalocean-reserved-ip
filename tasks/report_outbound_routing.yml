@@ -1,0 +1,8 @@
+---
+- name: Report routing configuration applied
+  ansible.builtin.debug:
+    msg:
+      - "Outbound routing via Reserved IP has been configured."
+      - "Current Ansible management address: {{ do_droplet_reserved_ip_address | default(ansible_host | default('unknown')) }}"
+      - "Anchor gateway: {{ anchor_gateway_associated_to_droplet }}"
+      - "Original public gateway: {{ original_public_gateway | default('unknown') }}"

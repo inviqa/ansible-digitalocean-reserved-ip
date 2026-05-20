@@ -11,8 +11,17 @@ digitalocean_reserved_ip_test_do_ssh_keys_from_env: >-
   {{
     lookup('env', 'DIGITAL_OCEAN_SSH_KEYS')
     | default('', true)
+    | regex_replace('\r?\n', ',')
     | split(',')
     | map('trim')
+    | map('regex_replace', '^\[', '')
+    | map('regex_replace', '\]$', '')
+    | map('regex_replace', '^-\\s*', '')
+    | map('trim')
+    | map('regex_replace', '^"', '')
+    | map('regex_replace', '"$', '')
+    | map('regex_replace', "^'", '')
+    | map('regex_replace', "'$", '')
     | reject('equalto', '')
     | list
   }}

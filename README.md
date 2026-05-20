@@ -4,8 +4,8 @@ Manage a DigitalOcean Reserved IP for an existing droplet and expose the
 network metadata needed by callers to align routing with the target host.
 
 This repository starts as a copy of the historical
-`ansible-digitalocean-floating-ip` work, but it is now packaged and documented as a
-Reserved IP role for future publication on Ansible Galaxy.
+`ansible-digitalocean-floating-ip` work, but it is now packaged and documented
+as a Reserved IP role.
 
 ## Table of contents
 
@@ -113,6 +113,30 @@ When `digitalocean_reserved_ip_enable_outbound_routing` is `true` (the default),
 configures the droplet to route all outbound traffic through the Reserved IP
 using the anchor gateway, following the
 [official DigitalOcean Reserved IP documentation](https://docs.digitalocean.com/networking/reserved-ips/#reserved-ips-and-outbound-traffic).
+
+The routing flow below shows the role-specific SSH handoff and operating-system
+branch before the immediate and persistent route changes.
+
+```mermaid
+flowchart LR
+  metadata["Retrieve anchor gateway"]
+  handoff["Switch Ansible to Reserved IP"]
+  os_family{"OS family?"}
+  immediate["Replace default route now"]
+  netplan["Persist route in netplan"]
+  nmcli["Persist gateway with NetworkManager"]
+  reboot["Reboot applies route"]
+  verify["Verify egress IP"]
+
+  metadata --> handoff
+  handoff --> os_family
+  os_family -->|Debian or Ubuntu| immediate
+  immediate --> netplan
+  os_family -->|Red Hat| nmcli
+  nmcli --> reboot
+  netplan --> verify
+  reboot --> verify
+```
 
 The routing configuration is applied in two ways:
 

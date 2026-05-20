@@ -1,0 +1,75 @@
+---
+- name: Wait for SSH to become reachable on the Reserved IP before route cutover
+  ansible.builtin.wait_for:
+    host: "{{ do_droplet_reserved_ip_address }}"
+    port: "{{ ansible_port | default(22) }}"
+    delay: 2
+    timeout: 120
+    state: started
+  delegate_to: localhost
+
+- name: Reset the temporary known_hosts file for the Reserved IP
+  ansible.builtin.copy:
+    content: ''
+    dest: "{{ reserved_ip_known_hosts_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Scan SSH host keys for the Reserved IP
+  ansible.builtin.command:
+    argv:
+      - ssh-keyscan
+      - -T
+      - '30'
+      - "{{ do_droplet_reserved_ip_address }}"
+  delegate_to: localhost
+  register: reserved_ip_host_keys
+  changed_when: false
+  retries: 5
+  delay: 3
+  until: reserved_ip_host_keys.stdout | length > 0
+
+- name: Write SSH host keys for the Reserved IP to the temporary known_hosts file
+  ansible.builtin.copy:
+    content: >-
+      {{
+        (
+          reserved_ip_host_keys.stdout_lines
+          | reject('match', '^#')
+          | reject('equalto', '')
+          | join('\n')
+        ) ~ '\n'
+      }}
+    dest: "{{ reserved_ip_known_hosts_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Switch Ansible management variables to the Reserved IP before route cutover
+  ansible.builtin.set_fact:
+    ansible_host: "{{ do_droplet_reserved_ip_address }}"
+    ansible_ssh_common_args: >-
+      {{
+        (
+          ansible_ssh_common_args | default('')
+          ~ ' -o UserKnownHostsFile=' ~ reserved_ip_known_hosts_file
+          ~ ' -o StrictHostKeyChecking=no'
+        ) | trim
+      }}
+    ansible_ssh_extra_args: >-
+      {{
+        (
+          ansible_ssh_extra_args | default('')
+          ~ ' -o UserKnownHostsFile=' ~ reserved_ip_known_hosts_file
+          ~ ' -o StrictHostKeyChecking=no'
+        ) | trim
+      }}
+    ansible_ssh_host: "{{ do_droplet_reserved_ip_address }}"
+
+- name: Reset the SSH connection so subsequent tasks use the Reserved IP
+  ansible.builtin.include_tasks: reset_connection.yml
+
+- name: Wait for the Reserved IP SSH connection to stabilize after reset
+  ansible.builtin.wait_for_connection:
+    delay: 2
+    sleep: 3
+    timeout: 120

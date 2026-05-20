@@ -1,0 +1,22 @@
+---
+- name: Schedule immediate routing via the anchor gateway
+  ansible.builtin.shell: |
+    nohup /bin/bash -c '
+      sleep 2
+      ip route replace default via {{ anchor_gateway_associated_to_droplet }} dev {{ reserved_ip_routing_interface }}
+    ' >/var/tmp/reserved-ip-route-switch.log 2>&1 </dev/null &
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Wait for SSH to return on the Reserved IP after route cutover
+  ansible.builtin.wait_for:
+    host: "{{ do_droplet_reserved_ip_address }}"
+    port: "{{ ansible_port | default(22) }}"
+    delay: 2
+    timeout: 120
+    state: started
+  delegate_to: localhost
+
+- name: Reset the SSH connection after the route cutover completes
+  ansible.builtin.include_tasks: reset_connection.yml

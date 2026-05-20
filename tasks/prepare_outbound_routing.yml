@@ -1,0 +1,41 @@
+---
+- name: Retrieve the original public gateway for reversal purposes
+  ansible.builtin.uri:
+    url: "{{ digitalocean_reserved_ip_metadata_public_ipv4_gateway_url }}"
+    body_format: raw
+    method: GET
+    follow_redirects: all
+    return_content: true
+    status_code:
+      - 200
+      - -1
+    timeout: 60
+  register: do_droplet_public_gateway
+  retries: 3
+  failed_when: false
+
+- name: Ensure required host facts are available for Reserved IP routing
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] is defined
+    fail_msg: >-
+      Reserved IP outbound routing requires gathered host facts. Enable fact
+      gathering for the play or set digitalocean_reserved_ip_enable_outbound_routing to
+      false.
+
+- name: Store the original public gateway
+  ansible.builtin.set_fact:
+    original_public_gateway: "{{ do_droplet_public_gateway.content }}"
+  when:
+    - do_droplet_public_gateway.content | length > 0
+    - do_droplet_public_gateway.content != "not found"
+
+- name: Determine the primary interface used for Reserved IP routing
+  ansible.builtin.set_fact:
+    reserved_ip_routing_interface: >-
+      {{ ansible_facts['default_ipv4']['interface'] | default('eth0') }}
+
+- name: Define the temporary known_hosts file for Reserved IP SSH handoff
+  ansible.builtin.set_fact:
+    reserved_ip_known_hosts_file: >-
+      /tmp/ansible-reserved-ip-{{ inventory_hostname | regex_replace('[^A-Za-z0-9_.-]', '_') }}.known_hosts

@@ -4,23 +4,22 @@
 
 ### CI
 
-- Corrected Jenkins credential IDs for shared DigitalOcean live-test
-  credentials.
+- Corrected Jenkins credential IDs for DigitalOcean live-test credentials.
 - Reduced duplicate Jenkins credential bindings and standardized release
   credentials on the expanded `GITHUB_TOKEN`, `DIGITAL_OCEAN_API_TOKEN`, and
   `DIGITAL_OCEAN_SSH_KEYS` environment names.
 - Kept `DO_OAUTH_TOKEN` as a backward-compatible local input fallback for
   DigitalOcean API credentials.
 - Simplified the Workspace console Dockerfile requirement-copy paths to generic
-  temporary filenames shared across sibling role repositories.
+  temporary filenames.
+- Reduced the Workspace destroy timeout so local test containers stop faster.
 
 ### Changed
 
-- Switched Jenkins live tests to the shared
-  `digitalocean-ansible-roles-oauth-token` credential used by DigitalOcean
-  Ansible role repositories.
-- Moved Jenkins validation and release publication onto the Workspace-backed
-  flow shared with sibling Ansible role repositories.
+- Switched Jenkins live tests to the
+  `digitalocean-ansible-roles-oauth-token` credential.
+- Moved Jenkins validation and release publication onto reusable Workspace
+  commands.
 - Added Workspace commands for DigitalOcean live testing, GitHub release
   checks, GitHub publication, Ansible Galaxy token checks, Galaxy status, and
   Galaxy import.
@@ -39,10 +38,22 @@
   while keeping fallback support for the previous `digital_ocean_*` names.
 - Moved test harness guidance into `docs/testing.md` and left
   `tests/README.md` as a pointer to the maintained documentation.
-- Aligned the testing documentation with the JumpCloud role structure by adding
-  Jenkinsfile lint guidance and a live-test flow diagram.
+- Added Jenkinsfile lint guidance and a live-test flow diagram to the testing
+  documentation.
+- Resolved live-test DigitalOcean SSH key selectors through the API before
+  Droplet creation so IDs, fingerprints, names, list values, and environment
+  strings are accepted consistently.
+- Made Workspace-provided DigitalOcean SSH key selectors take precedence over
+  local `tests/test_variables.yml` values during live tests.
+- Added live-test SSH agent validation against DigitalOcean MD5 fingerprints
+  and SSH key selection before Ansible connects to the created Droplet.
+- Set live-test SSH arguments so temporary DigitalOcean droplets bypass local
+  SSH proxy configuration during direct Ansible runs.
 - Documented the Ansible Galaxy release workflow and the Jenkins credentials
   used for GitHub and Galaxy publication.
+- Added a README diagram for the Reserved IP outbound routing handoff and
+  operating-system-specific persistence flow.
+- Clarified the README origin note without referencing future publication.
 - Sanitized the tracked live-test variable file so real credentials are read
   from Workspace overrides, environment variables, or Jenkins credentials.
 
