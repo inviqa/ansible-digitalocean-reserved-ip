@@ -248,7 +248,8 @@ cleanup, the Workspace CLI install command, and direct Ansible execution with
 ## Continuous integration
 
 - `Jenkinsfile` defines the private Jenkins CI entrypoint for this role.
-- `docs/jenkins-ci.md` documents the Jenkins parameters, required credentials,
+- `docs/jenkins-ci.md` documents the Jenkins build parameters, where
+  maintainers set them with **Build with Parameters**, required credentials,
   Workspace environment, validation stages, live DigitalOcean test stage,
   release preflight, and cleanup behavior.
 

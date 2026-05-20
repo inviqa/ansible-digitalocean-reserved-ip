@@ -32,8 +32,8 @@
   examples against the canonical `tests/inventory`.
 - Removed the duplicate single-family inventory files in favor of filtering
   `tests/inventory` by group.
-- Simplified Jenkins configuration by replacing build parameters with fixed
-  top-level environment defaults.
+- Kept Jenkins publication and live-test operator choices as build parameters
+  while keeping credential bindings centralized in the Jenkinsfile environment.
 - Renamed the role input variables to the `digitalocean_reserved_ip_*` prefix
   while keeping fallback support for the previous `digital_ocean_*` names.
 - Moved test harness guidance into `docs/testing.md` and left
@@ -55,8 +55,11 @@
   validation into reusable test task files.
 - Documented the Ansible Galaxy release workflow and the Jenkins credentials
   used for GitHub and Galaxy publication.
-- Kept the Ansible Galaxy release documentation aligned with Jenkinsfile
-  environment defaults and Workspace release checks.
+- Kept the Ansible Galaxy release documentation aligned with Jenkins
+  parameters and Workspace release checks.
+- Clarified where Jenkins maintainers set per-build pipeline parameters.
+- Clarified agent guidance for keeping Jenkins parameters, credential bindings,
+  and Workspace commands documented consistently.
 - Added a README diagram for the Reserved IP outbound routing handoff and
   operating-system-specific persistence flow.
 - Clarified the README origin note without referencing future publication.

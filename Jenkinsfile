@@ -13,15 +13,38 @@ pipeline {
         DIGITAL_OCEAN_SSH_KEYS = credentials('ansible-roles-tests-digitalocean-ssh-key-id')
         DIGITAL_OCEAN_API_TOKEN = credentials('ansible-roles-digitalocean-oauth-token')
         GITHUB_TOKEN = credentials('inviqa-ansible-roles-releases')
-        LIVE_TEST_TARGET = 'all'
-        PUBLISH_ANSIBLE_GALAXY_RELEASE = 'true'
-        PUBLISH_GITHUB_RELEASE = 'true'
-        RELEASE_VERSION = ''
-        RUN_LIVE_TESTS = 'true'
         SLACK_NOTIFICATION_CHANNEL = 'ops-integrations'
         SLACK_NOTIFICATIONS_ENABLED = 'true'
         SLACK_TOKEN_CREDENTIAL_ID = 'inviqa-slack-integration-token'
         SSH_PRIVATE_KEY_CREDENTIAL_ID = 'ansible-roles-test-ssh-private-key'
+    }
+
+    parameters {
+        booleanParam(
+            name: 'RUN_LIVE_TESTS',
+            defaultValue: true,
+            description: 'Run the DigitalOcean-backed Reserved IP live integration test matrix.'
+        )
+        choice(
+            name: 'LIVE_TEST_TARGET',
+            choices: ['all', 'debian', 'centos', 'ubuntu'],
+            description: 'DigitalOcean live test target passed to ws test-live.'
+        )
+        string(
+            name: 'RELEASE_VERSION',
+            defaultValue: '',
+            description: 'Optional release version to publish. Leave blank to use the latest concrete CHANGELOG.md release section.'
+        )
+        booleanParam(
+            name: 'PUBLISH_GITHUB_RELEASE',
+            defaultValue: true,
+            description: 'On main only, publish the GitHub release after validation succeeds.'
+        )
+        booleanParam(
+            name: 'PUBLISH_ANSIBLE_GALAXY_RELEASE',
+            defaultValue: true,
+            description: 'On main only, import the validated release into Ansible Galaxy after validation succeeds.'
+        )
     }
 
     stages {
@@ -61,18 +84,20 @@ pipeline {
 
         stage('Release preflight') {
             steps {
-                sh '''
-                    # Exit 2 means the changelog release is not published yet.
-                    set +e
-                    ws github release check
-                    github_release_status="$?"
-                    set -e
+                withEnv(["RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}"]) {
+                    sh '''
+                        # Exit 2 means the changelog release is not published yet.
+                        set +e
+                        ws github release check
+                        github_release_status="$?"
+                        set -e
 
-                    [ "${github_release_status}" = 0 ] || [ "${github_release_status}" = 2 ] || exit "${github_release_status}"
+                        [ "${github_release_status}" = 0 ] || [ "${github_release_status}" = 2 ] || exit "${github_release_status}"
 
-                    ws ansible-galaxy check-token
-                    ws ansible-galaxy info
-                '''
+                        ws ansible-galaxy check-token
+                        ws ansible-galaxy info
+                    '''
+                }
             }
             post {
                 failure {
@@ -83,11 +108,11 @@ pipeline {
 
         stage('Live DigitalOcean Reserved IP tests') {
             when {
-                expression { return env.RUN_LIVE_TESTS == 'true' }
+                expression { return params.RUN_LIVE_TESTS }
             }
             steps {
                 sshagent(credentials: [env.SSH_PRIVATE_KEY_CREDENTIAL_ID]) {
-                    sh 'ws test-live "${LIVE_TEST_TARGET}"'
+                    sh "ws test-live '${params.LIVE_TEST_TARGET}'"
                 }
             }
             post {
@@ -101,11 +126,13 @@ pipeline {
             when {
                 allOf {
                     branch 'main'
-                    expression { return env.PUBLISH_GITHUB_RELEASE == 'true' }
+                    expression { return params.PUBLISH_GITHUB_RELEASE }
                 }
             }
             steps {
-                sh 'ws github release publish'
+                withEnv(["RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}"]) {
+                    sh 'ws github release publish'
+                }
             }
             post {
                 failure {
@@ -118,11 +145,13 @@ pipeline {
             when {
                 allOf {
                     branch 'main'
-                    expression { return env.PUBLISH_ANSIBLE_GALAXY_RELEASE == 'true' }
+                    expression { return params.PUBLISH_ANSIBLE_GALAXY_RELEASE }
                 }
             }
             steps {
-                sh 'ws ansible-galaxy publish'
+                withEnv(["RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}"]) {
+                    sh 'ws ansible-galaxy publish'
+                }
             }
             post {
                 failure {

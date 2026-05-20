@@ -89,13 +89,16 @@ at the top of `Jenkinsfile`:
 | `inviqa-ansible-roles-releases` | Secret text | GitHub API token used to create the release in `inviqa/ansible-digitalocean-reserved-ip`. |
 | `ansible-digitalocean-reserved-ip-galaxy-token` | Secret text | Ansible Galaxy API token used to import the role after the GitHub release exists. |
 | `ansible-roles-digitalocean-oauth-token` | Secret text | Shared DigitalOcean API token for Ansible role live tests. |
-| `ansible-roles-tests-digitalocean-ssh-key-id` | Secret text | Comma or newline separated DigitalOcean SSH key IDs or fingerprints. |
+| `ansible-roles-tests-digitalocean-ssh-key-id` | Secret text | Comma-separated DigitalOcean SSH key IDs or fingerprints. |
 | `ansible-roles-test-ssh-private-key` | SSH username with private key | Private key loaded for live test droplet access. |
 | `inviqa-slack-integration-token` | Secret text | Slack token used for Jenkins failure notifications. |
 
-## Fixed Jenkins defaults
+## Jenkins parameters
 
-| Environment value | Default | Purpose |
+Release publication and live-test scope are controlled by Jenkins build
+parameters:
+
+| Parameter | Default | Purpose |
 | --- | --- | --- |
 | `RUN_LIVE_TESTS` | `true` | Enables the DigitalOcean-backed integration test stage. |
 | `LIVE_TEST_TARGET` | `all` | Live test target passed to `ws test-live`: `all`, `debian`, `centos`, or `ubuntu`. |
@@ -103,10 +106,20 @@ at the top of `Jenkinsfile`:
 | `PUBLISH_GITHUB_RELEASE` | `true` | Enables GitHub release publication on `main` after validation succeeds. |
 | `PUBLISH_ANSIBLE_GALAXY_RELEASE` | `true` | Enables Ansible Galaxy import on `main` after validation succeeds. |
 
+Jenkins shows these values on the job page through **Build with Parameters**.
+Maintainers can change them for one build without editing `Jenkinsfile`; for
+example, they can disable live tests, run only the `centos` target, publish a
+specific `RELEASE_VERSION`, or reimport Galaxy while skipping GitHub release
+creation.
+
 All credentials above must exist before the pipeline starts. Jenkins binds them
-once in the top-level environment alongside the fixed defaults above.
-`ws console` is the single Workspace entrypoint that forwards matching
-environment variables into commands executed inside the `console` container.
+once in the top-level environment. `ws console` is the single Workspace
+entrypoint that forwards matching environment variables into commands executed
+inside the `console` container.
+
+Credentials are configured separately in Jenkins Credentials and are referenced
+by the fixed credential IDs listed above. Change those IDs only when the Jenkins
+job wiring changes; use build parameters for per-run operator choices.
 
 Publication stages only run for the `main` branch. Pull request and
 feature-branch builds cannot publish a release through this Jenkinsfile, even
