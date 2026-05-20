@@ -1,10 +1,10 @@
 ---
 - name: Delete Reserved IPs
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/reserved_ips/{{ item }}"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ item }}"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     method: DELETE
     follow_redirects: all

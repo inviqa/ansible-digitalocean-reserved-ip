@@ -35,6 +35,8 @@
   `tests/inventory` by group.
 - Simplified Jenkins configuration by replacing build parameters with fixed
   top-level environment defaults.
+- Renamed the role input variables to the `digitalocean_reserved_ip_*` prefix
+  while keeping fallback support for the previous `digital_ocean_*` names.
 - Documented the Ansible Galaxy release workflow and the Jenkins credentials
   used for GitHub and Galaxy publication.
 - Sanitized the tracked live-test variable file so real credentials are read

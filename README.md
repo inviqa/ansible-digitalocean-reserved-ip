@@ -59,7 +59,7 @@ The role is intentionally narrow in scope:
 - a DigitalOcean API token with permission to manage droplets and Reserved IPs
 - `community.general` collection (used for RedHat-family NetworkManager
   gateway persistence via `community.general.nmcli`)
-- gathered host facts when `enable_reserved_ip_outbound_routing` is enabled
+- gathered host facts when `digitalocean_reserved_ip_enable_outbound_routing` is enabled
 
 ## Installation
 
@@ -85,13 +85,17 @@ it may still be consumed from a local checkout during migration work.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `digital_ocean_api_base_url` | `https://api.digitalocean.com/v2` | Base DigitalOcean API URL. |
-| `digital_ocean_api_token` | `{{ enc_do_v2_api_key }}` | API token used for DigitalOcean API requests. |
-| `digital_ocean_droplet_id` | `{{ do.droplet.id \| mandatory }}` | Target droplet identifier. |
-| `digital_ocean_reserved_ip` | `""` | Preferred Reserved IP input. Leave empty to allocate one automatically. |
-| `digital_ocean_metadata_anchor_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/anchor_ipv4/gateway` | Metadata endpoint used to discover the anchor gateway. |
-| `digital_ocean_metadata_public_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway` | Metadata endpoint used to discover the original public gateway. |
-| `enable_reserved_ip_outbound_routing` | `true` | Configure outbound routing through the Reserved IP via the anchor gateway. |
+| `digitalocean_reserved_ip_api_base_url` | `https://api.digitalocean.com/v2` | Base DigitalOcean API URL. |
+| `digitalocean_reserved_ip_api_token` | `{{ enc_do_v2_api_key }}` | API token used for DigitalOcean API requests. |
+| `digitalocean_reserved_ip_droplet_id` | `{{ do.droplet.id \| mandatory }}` | Target droplet identifier. |
+| `digitalocean_reserved_ip_address` | `""` | Preferred Reserved IP input. Leave empty to allocate one automatically. |
+| `digitalocean_reserved_ip_metadata_anchor_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/anchor_ipv4/gateway` | Metadata endpoint used to discover the anchor gateway. |
+| `digitalocean_reserved_ip_metadata_public_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway` | Metadata endpoint used to discover the original public gateway. |
+| `digitalocean_reserved_ip_enable_outbound_routing` | `true` | Configure outbound routing through the Reserved IP via the anchor gateway. |
+
+The role still accepts the older `digital_ocean_*` input names as fallback
+aliases during migration, but new playbooks should use the
+`digitalocean_reserved_ip_*` names above.
 
 ## Exported facts
 
@@ -104,7 +108,7 @@ The role exposes these Reserved-IP facts for callers:
 
 ## Outbound routing
 
-When `enable_reserved_ip_outbound_routing` is `true` (the default), the role
+When `digitalocean_reserved_ip_enable_outbound_routing` is `true` (the default), the role
 configures the droplet to route all outbound traffic through the Reserved IP
 using the anchor gateway, following the
 [official DigitalOcean Reserved IP documentation](https://docs.digitalocean.com/networking/reserved-ips/#reserved-ips-and-outbound-traffic).
@@ -160,7 +164,7 @@ The returned IP should match your Reserved IP address.
 
 ### Disabling routing
 
-Set `enable_reserved_ip_outbound_routing: false` to skip routing configuration.
+Set `digitalocean_reserved_ip_enable_outbound_routing: false` to skip routing configuration.
 The role will still allocate, attach, and expose the Reserved IP facts, but
 will not modify the droplet's routing table.
 
@@ -177,9 +181,9 @@ will not modify the droplet's routing table.
       ansible.builtin.include_role:
         name: "{{ reserved_ip_role_name }}"
       vars:
-        digital_ocean_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
-        digital_ocean_droplet_id: "{{ digitalocean_droplet.id }}"
-        digital_ocean_reserved_ip: "203.0.113.10"
+        digitalocean_reserved_ip_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
+        digitalocean_reserved_ip_droplet_id: "{{ digitalocean_droplet.id }}"
+        digitalocean_reserved_ip_address: "203.0.113.10"
 
 - name: Allocate a Reserved IP on the fly
   hosts: digitalocean_droplets
@@ -190,8 +194,8 @@ will not modify the droplet's routing table.
       ansible.builtin.include_role:
         name: "{{ reserved_ip_role_name }}"
       vars:
-        digital_ocean_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
-        digital_ocean_droplet_id: "{{ digitalocean_droplet.id }}"
+        digitalocean_reserved_ip_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
+        digitalocean_reserved_ip_droplet_id: "{{ digitalocean_droplet.id }}"
 ```
 
 If you install the published role under its current namespace, replace

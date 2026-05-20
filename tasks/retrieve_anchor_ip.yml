@@ -9,7 +9,7 @@
   block:
     - name: Retrieve the droplet anchor address
       ansible.builtin.uri:
-        url: "{{ digital_ocean_metadata_anchor_ipv4_url }}"
+        url: "{{ digitalocean_reserved_ip_metadata_anchor_ipv4_url }}"
         body_format: raw
         method: GET
         follow_redirects: all
@@ -43,7 +43,7 @@
   block:
     - name: Retrieve the droplet anchor gateway
       ansible.builtin.uri:
-        url: "{{ digital_ocean_metadata_anchor_ipv4_gateway_url }}"
+        url: "{{ digitalocean_reserved_ip_metadata_anchor_ipv4_gateway_url }}"
         body_format: raw
         method: GET
         follow_redirects: all

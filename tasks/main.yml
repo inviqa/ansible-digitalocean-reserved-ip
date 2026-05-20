@@ -1,14 +1,14 @@
 ---
 - name: Resolve effective Reserved IP input
   ansible.builtin.set_fact:
-    digital_ocean_effective_reserved_ip: "{{ digital_ocean_reserved_ip }}"
+    digitalocean_reserved_ip_effective_address: "{{ digitalocean_reserved_ip_address }}"
 
 - name: Check if the DigitalOcean droplet exists
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/droplets/{{ digital_ocean_droplet_id }}"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/droplets/{{ digitalocean_reserved_ip_droplet_id }}"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     method: GET
     follow_redirects: all
@@ -20,11 +20,11 @@
 
 - name: Allocate a Reserved IP when none was provided
   ansible.builtin.import_tasks: assign_new_reserved_ip.yml
-  when: digital_ocean_effective_reserved_ip | length == 0
+  when: digitalocean_reserved_ip_effective_address | length == 0
 
 - name: Attach a provided Reserved IP
   ansible.builtin.import_tasks: assign_existing_reserved_ip.yml
-  when: digital_ocean_effective_reserved_ip | length > 0
+  when: digitalocean_reserved_ip_effective_address | length > 0
 
 - name: Retrieve post-assignment network metadata for live routing
   ansible.builtin.import_tasks: retrieve_anchor_ip.yml
@@ -32,5 +32,5 @@
 - name: Configure outbound routing via Reserved IP when enabled
   ansible.builtin.import_tasks: setup_outbound_routing.yml
   when:
-    - enable_reserved_ip_outbound_routing | bool
+    - digitalocean_reserved_ip_enable_outbound_routing | bool
     - reserved_ip_is_assigned_to_this_droplet

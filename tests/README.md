@@ -170,7 +170,7 @@ If routing verification fails:
    `curl -4 https://icanhazip.com/`
 
 To skip routing configuration, add
-`enable_reserved_ip_outbound_routing: false` to the playbook variables.
+`digitalocean_reserved_ip_enable_outbound_routing: false` to the playbook variables.
 
 ## Notes
 

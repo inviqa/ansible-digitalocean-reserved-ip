@@ -2,7 +2,7 @@
 
 - name: Retrieve the original public gateway for reversal purposes
   ansible.builtin.uri:
-    url: "{{ digital_ocean_metadata_public_ipv4_gateway_url }}"
+    url: "{{ digitalocean_reserved_ip_metadata_public_ipv4_gateway_url }}"
     body_format: raw
     method: GET
     follow_redirects: all
@@ -21,7 +21,7 @@
       - ansible_facts['os_family'] is defined
     fail_msg: >-
       Reserved IP outbound routing requires gathered host facts. Enable fact
-      gathering for the play or set enable_reserved_ip_outbound_routing to
+      gathering for the play or set digitalocean_reserved_ip_enable_outbound_routing to
       false.
 
 - name: Store the original public gateway
