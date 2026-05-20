@@ -117,6 +117,10 @@ Required:
     instead of relying on broad truthiness filters for arbitrary strings.
 17. When editing network configuration, replace only the route or setting owned
     by this role and preserve unrelated existing entries.
+18. When changing Jenkinsfile publication or live-test controls, keep
+    `docs/jenkins-ci.md`, `docs/ansible-galaxy-release.md`, and `README.md`
+    aligned with whether controls are Jenkins parameters, fixed environment
+    defaults, or Workspace commands.
 
 ## Changelog Policy (Always Required)
 

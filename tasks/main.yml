@@ -1,22 +1,9 @@
 ---
 - name: Resolve effective Reserved IP input
-  ansible.builtin.set_fact:
-    digitalocean_reserved_ip_effective_address: "{{ digitalocean_reserved_ip_address }}"
+  ansible.builtin.import_tasks: resolve_reserved_ip_input.yml
 
 - name: Check if the DigitalOcean droplet exists
-  ansible.builtin.uri:
-    url: "{{ digitalocean_reserved_ip_api_base_url }}/droplets/{{ digitalocean_reserved_ip_droplet_id }}"
-    headers:
-      Content-Type: 'application/json'
-      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
-    body_format: json
-    method: GET
-    follow_redirects: all
-    return_content: true
-    timeout: 60
-  delegate_to: localhost
-  register: do_droplet_check_json_response
-  no_log: true
+  ansible.builtin.import_tasks: validate_target_droplet.yml
 
 - name: Allocate a Reserved IP when none was provided
   ansible.builtin.import_tasks: assign_new_reserved_ip.yml

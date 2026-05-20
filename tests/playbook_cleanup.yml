@@ -14,51 +14,13 @@
       - "{{ inventory_hostname }}-test-with-ansible"
     do_test_tag: "ANSIBLE-TEST"
   pre_tasks:
-    - name: Check whether local test overrides exist
-      ansible.builtin.stat:
-        path: "{{ playbook_dir }}/test_variables.yml"
-      register: local_test_variables_file
-
     - name: Load local test overrides
-      ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/test_variables.yml"
-      when: local_test_variables_file.stat.exists
+      ansible.builtin.include_tasks: tasks/load_local_test_overrides.yml
 
-    - name: Check whether a DigitalOcean API token is available for cleanup
-      ansible.builtin.assert:
-        that:
-          - enc_do_v2_api_key | length > 0
-        fail_msg: >-
-          Set do_test_api_token in tests/test_variables.yml or export
-          DIGITAL_OCEAN_API_TOKEN before running the cleanup playbook.
-
-    - name: Validate the DigitalOcean API token for cleanup
-      ansible.builtin.uri:
-        url: https://api.digitalocean.com/v2/account
-        headers:
-          Content-Type: application/json
-          Authorization: "Bearer {{ enc_do_v2_api_key }}"
-        method: GET
-        status_code:
-          - 200
-          - 401
-        return_content: true
-        timeout: 60
-      delegate_to: localhost
-      register: do_test_account_auth_check
-      no_log: true
-      failed_when: false
-
-    - name: Check whether the DigitalOcean API token can authenticate cleanup
-      ansible.builtin.assert:
-        that:
-          - do_test_account_auth_check.status == 200
-        fail_msg: >-
-          The configured DigitalOcean token could not authenticate against the
-          DigitalOcean API. Update do_test_api_token in tests/test_variables.yml
-          or export a valid DIGITAL_OCEAN_API_TOKEN before running the cleanup
-          playbook.
-
+    - name: Validate DigitalOcean cleanup credentials
+      ansible.builtin.include_tasks: tasks/validate_digitalocean_credentials.yml
+      vars:
+        digitalocean_reserved_ip_test_credential_context: cleanup playbook
   tasks:
     - name: Delete test resources
       ansible.builtin.include_tasks: tasks/delete_test_resources.yml

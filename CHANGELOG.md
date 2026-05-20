@@ -49,8 +49,14 @@
   and SSH key selection before Ansible connects to the created Droplet.
 - Set live-test SSH arguments so temporary DigitalOcean droplets bypass local
   SSH proxy configuration during direct Ansible runs.
+- Reorganized the role task flow so the main task file and outbound routing
+  setup delegate to focused task files.
+- Extracted shared live-test override loading and DigitalOcean credential
+  validation into reusable test task files.
 - Documented the Ansible Galaxy release workflow and the Jenkins credentials
   used for GitHub and Galaxy publication.
+- Kept the Ansible Galaxy release documentation aligned with Jenkinsfile
+  environment defaults and Workspace release checks.
 - Added a README diagram for the Reserved IP outbound routing handoff and
   operating-system-specific persistence flow.
 - Clarified the README origin note without referencing future publication.
