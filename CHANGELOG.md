@@ -1,12 +1,44 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-05-20
+
+### CI
+
+- Corrected Jenkins credential IDs for shared DigitalOcean live-test
+  credentials.
+- Reduced duplicate Jenkins credential bindings and standardized release
+  credentials on the expanded `GITHUB_TOKEN`, `DIGITAL_OCEAN_API_TOKEN`, and
+  `DIGITAL_OCEAN_SSH_KEYS` environment names.
+- Kept `DO_OAUTH_TOKEN` as a backward-compatible local input fallback for
+  DigitalOcean API credentials.
+- Simplified the Workspace console Dockerfile requirement-copy paths to generic
+  temporary filenames shared across sibling role repositories.
 
 ### Changed
 
 - Switched Jenkins live tests to the shared
   `digitalocean-ansible-roles-oauth-token` credential used by DigitalOcean
   Ansible role repositories.
+- Moved Jenkins validation and release publication onto the Workspace-backed
+  flow shared with sibling Ansible role repositories.
+- Added Workspace commands for DigitalOcean live testing, GitHub release
+  checks, GitHub publication, Ansible Galaxy token checks, Galaxy status, and
+  Galaxy import.
+- Required explicit Workspace live-test targets with `ws test-live all`,
+  `ws test-live debian`, `ws test-live centos`, or `ws test-live ubuntu`.
+- Required the same explicit target shape for cleanup with
+  `ws cleanup-live all`, `ws cleanup-live debian`, `ws cleanup-live centos`, or
+  `ws cleanup-live ubuntu`.
+- Replaced direct single-family Ansible inventory guidance with `--limit`
+  examples against the canonical `tests/inventory`.
+- Removed the duplicate single-family inventory files in favor of filtering
+  `tests/inventory` by group.
+- Simplified Jenkins configuration by replacing build parameters with fixed
+  top-level environment defaults.
+- Documented the Ansible Galaxy release workflow and the Jenkins credentials
+  used for GitHub and Galaxy publication.
+- Sanitized the tracked live-test variable file so real credentials are read
+  from Workspace overrides, environment variables, or Jenkins credentials.
 
 ## [0.1.0] - 2026-05-13 First release
 

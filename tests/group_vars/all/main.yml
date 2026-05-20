@@ -7,5 +7,15 @@ do_test_api_token_from_env: >-
     | default(lookup('env', 'DO_OAUTH_TOKEN'), true)
   }}
 enc_do_v2_api_key: "{{ do_test_api_token_from_env | default(do_test_api_token, true) }}"
+digitalocean_reserved_ip_test_do_ssh_keys_from_env: >-
+  {{
+    lookup('env', 'DIGITAL_OCEAN_SSH_KEYS')
+    | default('', true)
+    | split(',')
+    | map('trim')
+    | reject('equalto', '')
+    | list
+  }}
+do_ssh_keys: "{{ digitalocean_reserved_ip_test_do_ssh_keys_from_env | default([], true) }}"
 hostname: "ansible-digitalocean-reserved-ip-{{ inventory_hostname }}"
 do_test_tag: "ANSIBLE-TEST"

@@ -1,5 +1,0 @@
-[ubuntu]
-ubuntu-24-04 do_image_id=ubuntu-24-04-x64
-
-[digital_ocean:children]
-ubuntu

@@ -20,6 +20,7 @@ Reserved IP role for future publication on Ansible Galaxy.
 - [Examples](#examples)
 - [Development notes](#development-notes)
 - [Continuous integration](#continuous-integration)
+- [Release workflow](#release-workflow)
 - [Repository guidance](#repository-guidance)
 - [Maintainer](#maintainer)
 - [Support](#support)
@@ -176,7 +177,7 @@ will not modify the droplet's routing table.
       ansible.builtin.include_role:
         name: "{{ reserved_ip_role_name }}"
       vars:
-        digital_ocean_api_token: "{{ lookup('env', 'DO_OAUTH_TOKEN') }}"
+        digital_ocean_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
         digital_ocean_droplet_id: "{{ digitalocean_droplet.id }}"
         digital_ocean_reserved_ip: "203.0.113.10"
 
@@ -189,7 +190,7 @@ will not modify the droplet's routing table.
       ansible.builtin.include_role:
         name: "{{ reserved_ip_role_name }}"
       vars:
-        digital_ocean_api_token: "{{ lookup('env', 'DO_OAUTH_TOKEN') }}"
+        digital_ocean_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
         digital_ocean_droplet_id: "{{ digitalocean_droplet.id }}"
 ```
 
@@ -203,6 +204,9 @@ If you install the published role under its current namespace, replace
 - `tests/README.md` contains the current live test workflow, including the
   exact first-run command sequence for Debian-first validation, full-matrix
   execution, and cleanup.
+- `workspace.yml` provides the preferred local test and release command surface:
+  `ws ansible-lint`, `ws syntax`, `ws test-live all`, and the release
+  preflight commands documented below.
 - The repo is being prepared for Galaxy publication, so the metadata and
   documentation are intentionally kept explicit.
 
@@ -210,8 +214,20 @@ If you install the published role under its current namespace, replace
 
 - `Jenkinsfile` defines the private Jenkins CI entrypoint for this role.
 - `docs/jenkins-ci.md` documents the Jenkins parameters, required credentials,
-  shared Ansible Docker agent, validation stages, live DigitalOcean test stage, and
-  cleanup behavior.
+  Workspace environment, validation stages, live DigitalOcean test stage,
+  release preflight, and cleanup behavior.
+
+## Release workflow
+
+- `docs/ansible-galaxy-release.md` documents the GitHub release and Ansible
+  Galaxy import flow.
+- Workspace commands keep local and Jenkins release behavior aligned:
+  `ws github release check`, `ws github release publish`,
+  `ws ansible-galaxy check-token`, `ws ansible-galaxy info`, and
+  `ws ansible-galaxy publish`.
+- Galaxy publishing reads `ANSIBLE_GALAXY_TOKEN` or
+  `ansible.galaxy.token` from `workspace.override.yml`; Jenkins uses the
+  `ansible-digitalocean-reserved-ip-galaxy-token` Secret text credential.
 
 ## Repository guidance
 

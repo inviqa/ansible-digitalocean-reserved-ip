@@ -1,45 +1,64 @@
 # Jenkins CI integration
 
-This repository includes a `Jenkinsfile` for running the same Ansible
-validation and live test flow used during local maintenance.
+This repository includes a `Jenkinsfile` for running the same Workspace-backed
+validation, live test, and release preflight flow used during local
+maintenance.
 
 ## Pipeline coverage
 
-The pipeline runs inside a Jenkins-native Docker agent and executes:
+The pipeline runs on a Jenkins node with Workspace installed and executes:
 
-- Ansible collection installation from `tests/requirements.yml`
-- Syntax checks for `tests/playbook.yml` and `tests/playbook_cleanup.yml`
-- The live DigitalOcean test matrix with `tests/playbook.yml`
-- Cleanup with `tests/playbook_cleanup.yml`, even when the live test stage fails
-- Failure notification to the `ops-integrations` Slack channel
+- Workspace environment startup with `ws enable`
+- role linting through `ws ansible-lint`
+- syntax checks through `ws syntax`
+- non-mutating release preflight checks for GitHub release readiness, Ansible
+  Galaxy token configuration, and Galaxy role metadata
+- the live DigitalOcean Reserved IP test matrix through `ws test-live`
+- optional GitHub release creation from `main`
+- optional Ansible Galaxy import from `main`
+- failure notification to the `ops-integrations` Slack channel
 
 The live test stage provisions real DigitalOcean droplets and Reserved IPs, so
 it incurs provider cost while it runs.
 
-Markdown, YAML, and `ansible-lint` checks are intentionally not part of the
-Jenkins pipeline. They are local pre-handoff checks only, with Markdown using
-the repository `.markdownlint.json` file.
+The Jenkins pipeline mirrors the local live-test path. Cleanup is wired into
+`ws test-live <target>` so provider resources are removed after a failed run
+too.
 
-## Jenkins Docker agent
-
-The Jenkinsfile follows the Jenkins-native Docker workflow used by several
-local projects. Jenkins runs the pipeline inside the shared Inviqa Ansible
-image:
-
-```text
-quay.io/inviqa_images/ansible:2.15-python3.10-trixie
+```mermaid
+flowchart LR
+  checkout["Pipeline checkout"] --> build["Run ws enable"]
+  build --> lint["Run ws ansible-lint"]
+  lint --> syntax["Run ws syntax"]
+  syntax --> preflight["Run release preflight"]
+  preflight --> gate{"RUN_LIVE_TESTS?"}
+  gate -->|No| finish["Finish build"]
+  gate -->|Yes| live["Run ws test-live with SSH agent"]
+  live --> github_gate{"Publish GitHub release on main?"}
+  github_gate -->|Yes| github_release["Create GitHub release"]
+  github_gate -->|No| galaxy_gate{"Publish Galaxy release on main?"}
+  github_release --> galaxy_gate
+  galaxy_gate -->|Yes| galaxy_release["Import Galaxy role"]
+  galaxy_gate -->|No| notify{"Build failed?"}
+  galaxy_release --> notify
+  notify -->|Yes| slack["Send Slack failure notification"]
+  notify -->|No| finish
+  slack --> finish
 ```
 
-That image already provides Python and Ansible. The pipeline installs the
-Ansible collections required by the live test harness, then runs the Ansible
-commands directly.
+Markdown and YAML checks are intentionally kept as pre-handoff checks rather
+than Jenkins pipeline stages.
 
-This keeps the role aligned with the shared Inviqa Ansible image without
-requiring a project-specific Dockerfile or `docker compose` inside the
-Jenkinsfile.
+## Jenkins Workspace agent
 
-The Jenkins job does not install extra Python, YAML lint, Ansible lint, or
-Markdown tooling.
+The Jenkinsfile follows the Workspace-first pattern used by the sibling Ansible
+role repositories. Jenkins runs on a `linux-amd64` node where the Workspace CLI
+is already available. The pipeline calls `ws enable`, and Workspace starts the
+Docker Compose services that provide the Ansible execution environment.
+
+The Workspace `console` image installs the Python dependencies from
+`tests/requirements.txt` and Ansible collections from `tests/requirements.yml`.
+Jenkins does not run Ansible directly on the host.
 
 ## Jenkins setup
 
@@ -51,57 +70,134 @@ Recommended Jenkins configuration:
 - Required tools on the agent:
   - Docker
   - `ssh-agent`
-- Required Jenkins credential:
-  - String credential containing the DigitalOcean API token
-  - String credential containing the DigitalOcean SSH key IDs or fingerprints
-    used for test droplets
-  - SSH private key credential matching the DigitalOcean SSH key configured for
-    test droplets
+  - Workspace CLI `ws`
+- Required Jenkins credentials:
+  - DigitalOcean API token
+  - DigitalOcean SSH key IDs or fingerprints used for test droplets
+  - SSH private key matching the DigitalOcean SSH key configured for droplets
   - Slack token credential used for failure notifications
+  - GitHub API token with write access to
+    `inviqa/ansible-digitalocean-reserved-ip`
+  - Ansible Galaxy API token for the `inviqa` namespace, preferably loaded by a
+    dedicated publishing account rather than a personal maintainer account
 
-The credential ID placeholders are defined at the top of `Jenkinsfile`:
+The credential bindings and Workspace-facing environment variables are defined
+at the top of `Jenkinsfile`:
 
 | Placeholder | Jenkins credential type | Purpose |
 | --- | --- | --- |
-| `digitalocean-ansible-roles-oauth-token` | Secret text | Shared DigitalOcean API token for Ansible role live tests. |
-| `digitalocean-reserved-ip-ssh-key-ids` | Secret text | Comma or newline separated DigitalOcean SSH key IDs or fingerprints. |
-| `digitalocean-reserved-ip-test-ssh-private-key` | SSH username with private key | Private key loaded for live test droplet access. |
+| `inviqa-ansible-roles-releases` | Secret text | GitHub API token used to create the release in `inviqa/ansible-digitalocean-reserved-ip`. |
+| `ansible-digitalocean-reserved-ip-galaxy-token` | Secret text | Ansible Galaxy API token used to import the role after the GitHub release exists. |
+| `ansible-roles-digitalocean-oauth-token` | Secret text | Shared DigitalOcean API token for Ansible role live tests. |
+| `ansible-roles-tests-digitalocean-ssh-key-id` | Secret text | Comma or newline separated DigitalOcean SSH key IDs or fingerprints. |
+| `ansible-roles-test-ssh-private-key` | SSH username with private key | Private key loaded for live test droplet access. |
 | `inviqa-slack-integration-token` | Secret text | Slack token used for Jenkins failure notifications. |
 
-## Parameters
+## Fixed Jenkins defaults
 
-| Parameter | Default | Purpose |
+| Environment value | Default | Purpose |
 | --- | --- | --- |
-| `RUN_LIVE_TESTS` | `true` | Enables the live DigitalOcean integration test stage. |
-| `TEST_INVENTORY` | `tests/inventory` | Inventory choice used by the live test and cleanup playbooks. |
+| `RUN_LIVE_TESTS` | `true` | Enables the DigitalOcean-backed integration test stage. |
+| `LIVE_TEST_TARGET` | `all` | Live test target passed to `ws test-live`: `all`, `debian`, `centos`, or `ubuntu`. |
+| `RELEASE_VERSION` | empty | Optional release version to publish. When empty, Jenkins uses the latest concrete release section in `CHANGELOG.md`. |
+| `PUBLISH_GITHUB_RELEASE` | `true` | Enables GitHub release publication on `main` after validation succeeds. |
+| `PUBLISH_ANSIBLE_GALAXY_RELEASE` | `true` | Enables Ansible Galaxy import on `main` after validation succeeds. |
 
-When `RUN_LIVE_TESTS` is enabled, all three Jenkins credentials above must
-exist.
+All credentials above must exist before the pipeline starts. Jenkins binds them
+once in the top-level environment alongside the fixed defaults above.
+`ws console` is the single Workspace entrypoint that forwards matching
+environment variables into commands executed inside the `console` container.
 
-`TEST_INVENTORY` is restricted to these repository inventories:
+Publication stages only run for the `main` branch. Pull request and
+feature-branch builds cannot publish a release through this Jenkinsfile, even
+when the publication parameters are enabled.
 
-- `tests/inventory`
-- `tests/inventory-debian`
-- `tests/inventory-centos`
-- `tests/inventory-ubuntu`
+Galaxy documents API tokens as user-account tokens and does not document a
+separate public machine-user token type. For Jenkins, the preferred operational
+pattern is to log in to Galaxy with a dedicated GitHub publishing account, load
+the token from `https://galaxy.ansible.com/ui/token/`, and store it as the
+`ansible-digitalocean-reserved-ip-galaxy-token` Secret text credential.
+Reloading a Galaxy token invalidates the previous one, so Jenkins must be
+updated whenever the token is regenerated.
+
+## Release preflight
+
+Every Jenkins build runs a non-mutating release preflight before live tests:
+
+```text
+ws github release check
+ws ansible-galaxy check-token
+ws ansible-galaxy info
+```
+
+The GitHub check accepts exit code `0` when the release already exists and exit
+code `2` when the changelog has a concrete release that is not published yet.
+The latter is expected for a pull request that prepares a release.
+
+The Galaxy checks validate token configuration, command wiring, and Galaxy API
+read reachability without importing a new role release. The
+`ws ansible-galaxy status` command remains available for manual import-status
+diagnostics, but Jenkins does not use it as a preflight gate because Galaxy can
+return transient server errors for the status endpoint.
+
+## Release publication
+
+The GitHub release stage only calls `ws github release publish`. That Workspace
+command derives the release body from `CHANGELOG.md`, using `RELEASE_VERSION`
+when provided or the latest concrete release section when it is left blank.
+
+The Ansible Galaxy stage only calls `ws ansible-galaxy publish`. That Workspace
+command checks the GitHub release first, exits without importing when the same
+version is already visible on Galaxy, otherwise imports the `main` branch and
+verifies the version with a pinned `ansible-galaxy role install`.
+
+Enable both flags for the normal release path. Enable only the Galaxy flag when
+the GitHub release already exists and the role only needs to be reimported.
+
+Required data:
+
+- GitHub repository: `inviqa/ansible-digitalocean-reserved-ip`
+- GitHub credential ID: `inviqa-ansible-roles-releases`
+- GitHub publication flag: `PUBLISH_GITHUB_RELEASE=true`
+  - local equivalent: `ws github release publish`
+- Ansible Galaxy credential ID:
+  `ansible-digitalocean-reserved-ip-galaxy-token`
+- Ansible Galaxy publication flag: `PUBLISH_ANSIBLE_GALAXY_RELEASE=true`
+  - local equivalent: `ws ansible-galaxy publish`
+- Galaxy GitHub owner/repository:
+  `inviqa/ansible-digitalocean-reserved-ip`
+- Galaxy branch: `main`
+- Galaxy role name: `digitalocean_reserved_ip`
+- Galaxy version check: pinned install of
+  `inviqa.digitalocean_reserved_ip,<release-version>`
+
+The GitHub release and Galaxy import runbook is documented in
+[Ansible Galaxy Release Runbook](ansible-galaxy-release.md).
+
+Keeping the publication logic in Workspace keeps Jenkins thin and lets
+maintainers run the same checks and publication commands locally.
 
 The pipeline sends failure notifications only. Successful builds do not post to
 Slack.
 
-## Local equivalent
+## Jenkinsfile lint
 
-The Jenkinsfile mirrors this local sequence:
+Validate the Jenkinsfile locally before pushing pipeline changes:
 
 ```text
-docker run --rm -v "$PWD:/workspace" -w /workspace \
-  -e ANSIBLE_COLLECTIONS_PATH=/workspace/.ansible/collections:/home/ansible/.ansible/collections:/usr/share/ansible/collections \
-  -e ANSIBLE_ROLES_PATH=/workspace/tests/roles:/workspace/.ansible/roles:/home/ansible/.ansible/roles \
-  quay.io/inviqa_images/ansible:2.15-python3.10-trixie \
-  sh -c '
-    ansible-galaxy collection install -r tests/requirements.yml -p .ansible/collections &&
-    ansible-playbook --syntax-check -i tests/inventory tests/playbook.yml &&
-    ansible-playbook --syntax-check -i tests/inventory tests/playbook_cleanup.yml &&
-    ansible-playbook -i tests/inventory tests/playbook.yml &&
-    ansible-playbook -i tests/inventory tests/playbook_cleanup.yml
-  '
+ws lint-jenkinsfile
+```
+
+The Workspace command starts the `console` and `jenkins-lint` Compose services,
+then runs the helper inside the console container.
+
+## Local equivalent
+
+The Jenkinsfile mirrors the Workspace test sequence:
+
+```text
+ws enable
+ws ansible-lint
+ws syntax
+ws test-live all
 ```

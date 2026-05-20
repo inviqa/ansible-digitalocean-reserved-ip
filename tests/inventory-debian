@@ -1,5 +1,0 @@
-[debian]
-debian-13 do_image_id=debian-13-x64
-
-[digital_ocean:children]
-debian

@@ -30,8 +30,7 @@
           - enc_do_v2_api_key | length > 0
         fail_msg: >-
           Set do_test_api_token in tests/test_variables.yml or export
-          DIGITAL_OCEAN_API_TOKEN or DO_OAUTH_TOKEN before running the cleanup
-          playbook.
+          DIGITAL_OCEAN_API_TOKEN before running the cleanup playbook.
 
     - name: Validate the DigitalOcean API token for cleanup
       ansible.builtin.uri:
@@ -57,8 +56,8 @@
         fail_msg: >-
           The configured DigitalOcean token could not authenticate against the
           DigitalOcean API. Update do_test_api_token in tests/test_variables.yml
-          or export a valid DIGITAL_OCEAN_API_TOKEN / DO_OAUTH_TOKEN before
-          running the cleanup playbook.
+          or export a valid DIGITAL_OCEAN_API_TOKEN before running the cleanup
+          playbook.
 
   tasks:
     - name: Delete test resources

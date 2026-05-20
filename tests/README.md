@@ -22,24 +22,41 @@ The default inventory currently exercises:
 | CentOS family | `centos-stream-10-x64` |
 | Ubuntu | `ubuntu-24-04-x64` |
 
-Single-family inventories use the same image slugs: `inventory-debian`,
-`inventory-centos`, `inventory-ubuntu`.
+Single-family runs use the `debian`, `centos`, and `ubuntu` inventory groups
+through Ansible `--limit`.
 
 ## Setup
 
-Install the required Ansible collections from the repository root:
+The preferred local entrypoint is Workspace. Install the Workspace CLI if `ws`
+is not already available:
 
 ```text
-ansible-galaxy collection install -r tests/requirements.yml
+WS_VERSION=0.4.1
+curl --output ./ws --location "https://github.com/my127/workspace/releases/download/${WS_VERSION}/ws"
+chmod +x ws && sudo mv ws /usr/local/bin/ws
 ```
 
-Copy the example variables file and edit it:
+Live commands read local attributes from `workspace.override.yml`. Create it
+from the example first:
+
+```text
+cp workspace.override.yml.example workspace.override.yml
+```
+
+Set `test.digitalocean.api_token` and `test.digitalocean.ssh_keys`. The SSH key
+selector can be comma separated when it is passed through Workspace or Jenkins.
+The selected DigitalOcean SSH key must match a private key loaded in the
+forwarded SSH agent.
+
+The playbooks still support the legacy local override file for direct Ansible
+runs:
 
 ```text
 cp tests/test_variables.example.yml tests/test_variables.yml
 ```
 
-Set your DigitalOcean API token and at least one SSH key ID or fingerprint:
+For direct Ansible runs, set your DigitalOcean API token and at least one SSH
+key ID or fingerprint:
 
 ```yaml
 do_test_api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -63,13 +80,29 @@ The harness creates droplets with the `digitalocean.cloud` collection and
 connects to them as `root`, so `do_ssh_keys` must reference a DigitalOcean SSH
 key whose private key is available for root login.
 
-> **Note:** If `DIGITAL_OCEAN_API_TOKEN` or `DO_OAUTH_TOKEN` is exported in the
-> current shell, it takes precedence over `do_test_api_token` in
+> **Note:** If `DIGITAL_OCEAN_API_TOKEN` is exported in the current shell, it
+> takes precedence over `do_test_api_token` in
 > `test_variables.yml`.
 
 ## Run the tests
 
-From the repository root, run the full matrix:
+From the repository root, run the full matrix with Workspace:
+
+```text
+ws test-live all
+```
+
+Run one family only:
+
+```text
+ws test-live debian
+ws test-live centos
+ws test-live ubuntu
+```
+
+Use `ws syntax` for syntax checks and `ws ansible-lint` for role linting.
+
+For direct Ansible runs, execute the playbooks from the repository root:
 
 ```text
 ansible-playbook -i tests/inventory tests/playbook.yml
@@ -78,24 +111,38 @@ ansible-playbook -i tests/inventory tests/playbook.yml
 Run one family only:
 
 ```text
-ansible-playbook -i tests/inventory-debian tests/playbook.yml
-ansible-playbook -i tests/inventory-centos tests/playbook.yml
-ansible-playbook -i tests/inventory-ubuntu tests/playbook.yml
+ansible-playbook -i tests/inventory tests/playbook.yml --limit debian
+ansible-playbook -i tests/inventory tests/playbook.yml --limit centos
+ansible-playbook -i tests/inventory tests/playbook.yml --limit ubuntu
 ```
 
 ## Clean up
 
-Destroy the test droplets and their Reserved IPs:
+Destroy all test droplets and Reserved IPs with Workspace:
+
+```text
+ws cleanup-live all
+```
+
+Clean up one family only:
+
+```text
+ws cleanup-live debian
+ws cleanup-live centos
+ws cleanup-live ubuntu
+```
+
+For direct Ansible runs:
 
 ```text
 ansible-playbook -i tests/inventory tests/playbook_cleanup.yml
 ```
 
-If a single-family run fails mid-flight, clean up with the matching inventory
+If a single-family run fails mid-flight, clean up with the matching limit
 before retrying:
 
 ```text
-ansible-playbook -i tests/inventory-debian tests/playbook_cleanup.yml
+ansible-playbook -i tests/inventory tests/playbook_cleanup.yml --limit debian
 ```
 
 ## Outbound routing verification
@@ -130,6 +177,8 @@ To skip routing configuration, add
 - The harness provisions real droplets and Reserved IPs, so it incurs cost.
 - No AWS credentials are required; only DigitalOcean credentials are used.
 - The harness connects to test droplets as `root`.
+- `workspace.override.yml` and `tests/test_variables.yml` must stay untracked
+  because they may contain local credentials.
 - Test droplets are named `ansible-digitalocean-reserved-ip-<inventory-name>`
   and tagged with `ANSIBLE-TEST` for cleanup.
 - Cleanup also recognises the previous `<inventory-name>-test-with-ansible`
@@ -139,6 +188,6 @@ To skip routing configuration, add
 - If you get `Permission denied (publickey)`, confirm the private key matching
   `do_ssh_keys` is loaded in your SSH agent.
 - If you get a `401 Unauthorized` error, verify `do_test_api_token` in
-  `test_variables.yml` or export a valid `DIGITAL_OCEAN_API_TOKEN` /
-  `DO_OAUTH_TOKEN`. The harness checks `/v2/account` before provisioning, so
-  an invalid token fails early with a clear authentication message.
+  `test_variables.yml` or export a valid `DIGITAL_OCEAN_API_TOKEN`. The harness
+  checks `/v2/account` before provisioning, so an invalid token fails early
+  with a clear authentication message.
