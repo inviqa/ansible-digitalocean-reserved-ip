@@ -1,30 +1,7 @@
 def failureMessages = []
-def DO_TOKEN_CREDENTIAL_ID = 'digitalocean-ansible-roles-oauth-token'
-def DO_SSH_KEYS_CREDENTIAL_ID = 'digitalocean-reserved-ip-ssh-key-ids'
-def SSH_PRIVATE_KEY_CREDENTIAL_ID = 'digitalocean-reserved-ip-test-ssh-private-key'
-def SLACK_TOKEN_CREDENTIAL_ID = 'inviqa-slack-integration-token'
-def TEST_INVENTORY_CHOICES = [
-    'tests/inventory',
-    'tests/inventory-debian',
-    'tests/inventory-centos',
-    'tests/inventory-ubuntu'
-]
-
-def runWithSshAgent(String command) {
-    sshagent(credentials: [SSH_PRIVATE_KEY_CREDENTIAL_ID]) {
-        sh command
-    }
-}
 
 pipeline {
-    agent {
-        docker {
-            label 'linux-amd64'
-            alwaysPull true
-            image 'quay.io/inviqa_images/ansible:2.15-python3.10-trixie'
-            args '--entrypoint=""'
-        }
-    }
+    agent { label 'linux-amd64' }
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -32,41 +9,72 @@ pipeline {
     }
 
     environment {
-        ANSIBLE_COLLECTIONS_PATH = ".ansible/collections:/home/ansible/.ansible/collections:/usr/share/ansible/collections"
-        ANSIBLE_FORCE_COLOR = 'true'
-        ANSIBLE_ROLES_PATH = "tests/roles:.ansible/roles:/home/ansible/.ansible/roles"
+        ANSIBLE_GALAXY_TOKEN = credentials('ansible-roles-galaxy-token')
+        DIGITAL_OCEAN_SSH_KEYS = credentials('ansible-roles-tests-digitalocean-ssh-key-id')
+        DIGITAL_OCEAN_API_TOKEN = credentials('ansible-roles-digitalocean-oauth-token')
+        DIGITAL_OCEAN_PROJECT_NAME = 'Inviqa Sandbox'
+        GITHUB_TOKEN = credentials('inviqa-ansible-roles-releases')
         SLACK_NOTIFICATION_CHANNEL = 'ops-integrations'
+        SLACK_NOTIFICATIONS_ENABLED = 'true'
+        SLACK_TOKEN_CREDENTIAL_ID = 'inviqa-slack-integration-token'
+        SSH_PRIVATE_KEY_CREDENTIAL_ID = 'ansible-roles-test-ssh-private-key'
     }
 
     parameters {
         booleanParam(
             name: 'RUN_LIVE_TESTS',
             defaultValue: true,
-            description: 'Run the DigitalOcean live integration test matrix.'
+            description: 'Run the DigitalOcean-backed Reserved IP live integration test matrix.'
         )
         choice(
-            name: 'TEST_INVENTORY',
-            choices: TEST_INVENTORY_CHOICES,
-            description: 'Inventory used for the live test and cleanup playbooks.'
+            name: 'LIVE_TEST_TARGET',
+            choices: ['all', 'debian', 'centos', 'ubuntu'],
+            description: 'DigitalOcean live test target passed to ws test-live.'
+        )
+        string(
+            name: 'RELEASE_VERSION',
+            defaultValue: '',
+            description: 'Optional release version to publish. Leave blank to use the latest concrete CHANGELOG.md release section.'
+        )
+        booleanParam(
+            name: 'PUBLISH_GITHUB_RELEASE',
+            defaultValue: true,
+            description: 'On main only, publish the GitHub release after validation succeeds.'
+        )
+        booleanParam(
+            name: 'PUBLISH_ANSIBLE_GALAXY_RELEASE',
+            defaultValue: true,
+            description: 'On main only, import the validated release into Ansible Galaxy after validation succeeds.'
         )
     }
 
     stages {
-        stage('Install Ansible dependencies') {
+        stage('Build') {
             steps {
-                sh 'ansible-galaxy collection install -r tests/requirements.yml -p .ansible/collections'
+                sh 'ws enable'
+                milestone(10)
             }
             post {
                 failure {
-                    script { failureMessages << 'Ansible collection installation failed' }
+                    script { failureMessages << 'Workspace environment failed to enable' }
+                }
+            }
+        }
+
+        stage('Linting') {
+            steps {
+                sh 'ws ansible lint'
+            }
+            post {
+                failure {
+                    script { failureMessages << 'Ansible linting failed' }
                 }
             }
         }
 
         stage('Syntax checks') {
             steps {
-                sh 'ansible-playbook --syntax-check -i tests/inventory tests/playbook.yml'
-                sh 'ansible-playbook --syntax-check -i tests/inventory tests/playbook_cleanup.yml'
+                sh 'ws ansible syntax'
             }
             post {
                 failure {
@@ -75,44 +83,80 @@ pipeline {
             }
         }
 
-        stage('Live DigitalOcean tests') {
-            when {
-                expression { return params.RUN_LIVE_TESTS }
-            }
+        stage('Release preflight') {
             steps {
-                script {
-                    if (!TEST_INVENTORY_CHOICES.contains(params.TEST_INVENTORY)) {
-                        error("Unsupported TEST_INVENTORY '${params.TEST_INVENTORY}'")
-                    }
+                withEnv(["RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}"]) {
+                    sh '''
+                        # Exit 2 means the changelog release is not published yet.
+                        set +e
+                        ws github release check
+                        github_release_status="$?"
+                        set -e
 
-                    withCredentials([
-                        string(credentialsId: DO_TOKEN_CREDENTIAL_ID, variable: 'DIGITAL_OCEAN_API_TOKEN'),
-                        string(credentialsId: DO_SSH_KEYS_CREDENTIAL_ID, variable: 'DO_SSH_KEYS')
-                    ]) {
-                        sh '''
-                            set -eu
-                            umask 077
-                            {
-                                printf '%s\n' '---'
-                                printf '%s\n' 'do_ssh_keys:'
-                                printf '%s\n' "$DO_SSH_KEYS" |
-                                    tr ',' '\\n' |
-                                    sed 's/^[[:space:]]*//; s/[[:space:]]*$//' |
-                                    awk 'NF { printf "  - \\"%s\\"\\n", $0 }'
-                            } > tests/test_variables.yml
-                        '''
+                        [ "${github_release_status}" = 0 ] || [ "${github_release_status}" = 2 ] || exit "${github_release_status}"
 
-                        try {
-                            runWithSshAgent("ansible-playbook -i '${params.TEST_INVENTORY}' tests/playbook.yml")
-                        } finally {
-                            runWithSshAgent("ansible-playbook -i '${params.TEST_INVENTORY}' tests/playbook_cleanup.yml")
-                        }
-                    }
+                        ws ansible galaxy check-token
+                        ws ansible galaxy info
+                    '''
                 }
             }
             post {
                 failure {
-                    script { failureMessages << 'Live DigitalOcean integration tests failed' }
+                    script { failureMessages << 'Release preflight checks failed' }
+                }
+            }
+        }
+
+        stage('Live DigitalOcean Reserved IP tests') {
+            when {
+                expression { return params.RUN_LIVE_TESTS }
+            }
+            steps {
+                sshagent(credentials: [env.SSH_PRIVATE_KEY_CREDENTIAL_ID]) {
+                    sh "ws test-live full-cycle '${params.LIVE_TEST_TARGET}'"
+                }
+            }
+            post {
+                failure {
+                    script { failureMessages << 'Live DigitalOcean Reserved IP integration tests failed' }
+                }
+            }
+        }
+
+        stage('Publish GitHub release') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { return params.PUBLISH_GITHUB_RELEASE }
+                }
+            }
+            steps {
+                withEnv(["RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}"]) {
+                    sh 'ws github release publish'
+                }
+            }
+            post {
+                failure {
+                    script { failureMessages << 'GitHub release publication failed' }
+                }
+            }
+        }
+
+        stage('Publish Ansible Galaxy release') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { return params.PUBLISH_ANSIBLE_GALAXY_RELEASE }
+                }
+            }
+            steps {
+                withEnv(["RELEASE_VERSION=${params.RELEASE_VERSION ?: ''}"]) {
+                    sh 'ws ansible galaxy publish'
+                }
+            }
+            post {
+                failure {
+                    script { failureMessages << 'Ansible Galaxy release publication failed' }
                 }
             }
         }
@@ -142,12 +186,22 @@ pipeline {
                         fields: fields
                     ]
                 ]
-
-                slackSend(channel: env.SLACK_NOTIFICATION_CHANNEL, color: 'danger', attachments: attachments, tokenCredentialId: SLACK_TOKEN_CREDENTIAL_ID)
+                if (env.SLACK_NOTIFICATIONS_ENABLED == 'true') {
+                    slackSend(channel: env.SLACK_NOTIFICATION_CHANNEL, color: 'danger', attachments: attachments, tokenCredentialId: env.SLACK_TOKEN_CREDENTIAL_ID)
+                } else {
+                    echo "Slack ${currentBuild.currentResult} notification skipped; SLACK_NOTIFICATIONS_ENABLED is false."
+                }
             }
         }
         always {
-            sh 'rm -f tests/test_variables.yml'
+            script {
+                if (params.RUN_LIVE_TESTS) {
+                    sshagent(credentials: [env.SSH_PRIVATE_KEY_CREDENTIAL_ID]) {
+                        sh "ws test-live cleanup '${params.LIVE_TEST_TARGET}' || true"
+                    }
+                }
+            }
+            sh 'ws destroy'
             cleanWs()
         }
     }

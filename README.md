@@ -4,8 +4,8 @@ Manage a DigitalOcean Reserved IP for an existing droplet and expose the
 network metadata needed by callers to align routing with the target host.
 
 This repository starts as a copy of the historical
-`ansible-digitalocean-floating-ip` work, but it is now packaged and documented as a
-Reserved IP role for future publication on Ansible Galaxy.
+`ansible-digitalocean-floating-ip` work, but it is now packaged and documented
+as a Reserved IP role.
 
 ## Table of contents
 
@@ -18,8 +18,10 @@ Reserved IP role for future publication on Ansible Galaxy.
 - [Exported facts](#exported-facts)
 - [Outbound routing](#outbound-routing)
 - [Examples](#examples)
+- [Testing](#testing)
 - [Development notes](#development-notes)
 - [Continuous integration](#continuous-integration)
+- [Release workflow](#release-workflow)
 - [Repository guidance](#repository-guidance)
 - [Maintainer](#maintainer)
 - [Support](#support)
@@ -58,7 +60,7 @@ The role is intentionally narrow in scope:
 - a DigitalOcean API token with permission to manage droplets and Reserved IPs
 - `community.general` collection (used for RedHat-family NetworkManager
   gateway persistence via `community.general.nmcli`)
-- gathered host facts when `enable_reserved_ip_outbound_routing` is enabled
+- gathered host facts when `digitalocean_reserved_ip_enable_outbound_routing` is enabled
 
 ## Installation
 
@@ -84,13 +86,17 @@ it may still be consumed from a local checkout during migration work.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `digital_ocean_api_base_url` | `https://api.digitalocean.com/v2` | Base DigitalOcean API URL. |
-| `digital_ocean_api_token` | `{{ enc_do_v2_api_key }}` | API token used for DigitalOcean API requests. |
-| `digital_ocean_droplet_id` | `{{ do.droplet.id \| mandatory }}` | Target droplet identifier. |
-| `digital_ocean_reserved_ip` | `""` | Preferred Reserved IP input. Leave empty to allocate one automatically. |
-| `digital_ocean_metadata_anchor_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/anchor_ipv4/gateway` | Metadata endpoint used to discover the anchor gateway. |
-| `digital_ocean_metadata_public_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway` | Metadata endpoint used to discover the original public gateway. |
-| `enable_reserved_ip_outbound_routing` | `true` | Configure outbound routing through the Reserved IP via the anchor gateway. |
+| `digitalocean_reserved_ip_api_base_url` | `https://api.digitalocean.com/v2` | Base DigitalOcean API URL. |
+| `digitalocean_reserved_ip_api_token` | `{{ enc_do_v2_api_key }}` | API token used for DigitalOcean API requests. |
+| `digitalocean_reserved_ip_droplet_id` | `{{ do.droplet.id \| mandatory }}` | Target droplet identifier. |
+| `digitalocean_reserved_ip_address` | `""` | Preferred Reserved IP input. Leave empty to allocate one automatically. |
+| `digitalocean_reserved_ip_metadata_anchor_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/anchor_ipv4/gateway` | Metadata endpoint used to discover the anchor gateway. |
+| `digitalocean_reserved_ip_metadata_public_ipv4_gateway_url` | `http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway` | Metadata endpoint used to discover the original public gateway. |
+| `digitalocean_reserved_ip_enable_outbound_routing` | `true` | Configure outbound routing through the Reserved IP via the anchor gateway. |
+
+The role still accepts the older `digital_ocean_*` input names as fallback
+aliases during migration, but new playbooks should use the
+`digitalocean_reserved_ip_*` names above.
 
 ## Exported facts
 
@@ -103,10 +109,44 @@ The role exposes these Reserved-IP facts for callers:
 
 ## Outbound routing
 
-When `enable_reserved_ip_outbound_routing` is `true` (the default), the role
+When `digitalocean_reserved_ip_enable_outbound_routing` is `true` (the default), the role
 configures the droplet to route all outbound traffic through the Reserved IP
 using the anchor gateway, following the
 [official DigitalOcean Reserved IP documentation](https://docs.digitalocean.com/networking/reserved-ips/#reserved-ips-and-outbound-traffic).
+
+The routing flows below show the role-specific SSH handoff and
+operating-system branch before the immediate and persistent route changes.
+
+The handoff phase discovers the anchor gateway and moves Ansible management to
+the Reserved IP before changing routing.
+
+```mermaid
+flowchart LR
+  metadata["Anchor gateway"]
+  handoff["SSH via Reserved IP"]
+  os_family{"OS family?"}
+  metadata --> handoff
+  handoff --> os_family
+```
+
+The routing phase then follows the operating-system-specific persistence path
+and verifies the resulting egress address.
+
+```mermaid
+flowchart LR
+  os_family{"OS family?"}
+  immediate["Route now"]
+  netplan["Persist netplan"]
+  nmcli["Persist NM gateway"]
+  reboot["Reboot applies route"]
+  verify["Verify egress IP"]
+  os_family -->|Debian or Ubuntu| immediate
+  immediate --> netplan
+  os_family -->|Red Hat| nmcli
+  nmcli --> reboot
+  netplan --> verify
+  reboot --> verify
+```
 
 The routing configuration is applied in two ways:
 
@@ -159,7 +199,7 @@ The returned IP should match your Reserved IP address.
 
 ### Disabling routing
 
-Set `enable_reserved_ip_outbound_routing: false` to skip routing configuration.
+Set `digitalocean_reserved_ip_enable_outbound_routing: false` to skip routing configuration.
 The role will still allocate, attach, and expose the Reserved IP facts, but
 will not modify the droplet's routing table.
 
@@ -176,9 +216,9 @@ will not modify the droplet's routing table.
       ansible.builtin.include_role:
         name: "{{ reserved_ip_role_name }}"
       vars:
-        digital_ocean_api_token: "{{ lookup('env', 'DO_OAUTH_TOKEN') }}"
-        digital_ocean_droplet_id: "{{ digitalocean_droplet.id }}"
-        digital_ocean_reserved_ip: "203.0.113.10"
+        digitalocean_reserved_ip_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
+        digitalocean_reserved_ip_droplet_id: "{{ digitalocean_droplet.id }}"
+        digitalocean_reserved_ip_address: "203.0.113.10"
 
 - name: Allocate a Reserved IP on the fly
   hosts: digitalocean_droplets
@@ -189,29 +229,54 @@ will not modify the droplet's routing table.
       ansible.builtin.include_role:
         name: "{{ reserved_ip_role_name }}"
       vars:
-        digital_ocean_api_token: "{{ lookup('env', 'DO_OAUTH_TOKEN') }}"
-        digital_ocean_droplet_id: "{{ digitalocean_droplet.id }}"
+        digitalocean_reserved_ip_api_token: "{{ lookup('env', 'DIGITAL_OCEAN_API_TOKEN') }}"
+        digitalocean_reserved_ip_droplet_id: "{{ digitalocean_droplet.id }}"
 ```
 
 If you install the published role under its current namespace, replace
 `digitalocean_reserved_ip` with `inviqa.digitalocean_reserved_ip`.
 
+## Testing
+
+The current test workflow is documented in [docs/testing.md](docs/testing.md).
+It covers Workspace commands, DigitalOcean live tests, Jenkinsfile lint,
+cleanup, DigitalOcean project assignment for test droplets, the Workspace CLI
+install command, and manual playbook runs through `ws ansible playbook` with
+`WS_PLAYBOOK_LIMIT`.
+
 ## Development notes
 
 - `tests/` contains the copied integration harness and is being refreshed for
   the new role name.
-- `tests/README.md` contains the current live test workflow, including the
-  exact first-run command sequence for Debian-first validation, full-matrix
-  execution, and cleanup.
+- `tests/README.md` points to the maintained testing documentation in
+  `docs/testing.md`.
+- `workspace.yml` provides the preferred local test and release command surface:
+  `ws ansible lint`, `ws ansible syntax`,
+  `ws ansible playbook <playbook> <inventory>`,
+  `ws test-live provision|cleanup|full-cycle <target>`, and the release
+  preflight commands documented below.
 - The repo is being prepared for Galaxy publication, so the metadata and
   documentation are intentionally kept explicit.
 
 ## Continuous integration
 
 - `Jenkinsfile` defines the private Jenkins CI entrypoint for this role.
-- `docs/jenkins-ci.md` documents the Jenkins parameters, required credentials,
-  shared Ansible Docker agent, validation stages, live DigitalOcean test stage, and
-  cleanup behavior.
+- `docs/jenkins-ci.md` documents the Jenkins build parameters, where
+  maintainers set them with **Build with Parameters**, required credentials,
+  Workspace environment, validation stages, live DigitalOcean test stage,
+  release preflight, and cleanup behavior.
+
+## Release workflow
+
+- `docs/ansible-galaxy-release.md` documents the GitHub release and Ansible
+  Galaxy import flow.
+- Workspace commands keep local and Jenkins release behavior aligned:
+  `ws github release check`, `ws github release publish`,
+  `ws ansible galaxy check-token`, `ws ansible galaxy info`, and
+  `ws ansible galaxy publish`.
+- Galaxy publishing reads `ansible.galaxy.token` from
+  `workspace.override.yml` or `ANSIBLE_GALAXY_TOKEN`; Jenkins uses the
+  `ansible-roles-galaxy-token` Secret text credential.
 
 ## Repository guidance
 

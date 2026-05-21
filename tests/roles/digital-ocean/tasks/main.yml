@@ -1,13 +1,10 @@
 ---
-- name: Ensure test SSH keys are configured
-  ansible.builtin.assert:
-    that:
-      - digital_ocean_ssh_keys | length > 0
-    fail_msg: >-
-      Set do_ssh_keys in tests/test_variables.yml to one or more
-      DigitalOcean SSH key fingerprints or IDs before running the test
-      harness.
-  delegate_to: localhost
+- name: Resolve DigitalOcean SSH keys
+  ansible.builtin.import_tasks: resolve_ssh_keys.yml
+
+- name: Validate selected SSH key is available locally
+  ansible.builtin.import_tasks: validate_ssh_agent_keys.yml
+  when: do_ssh_private_key_file is not defined
 
 - name: Create or reuse the test droplet
   digitalocean.cloud.droplet:
@@ -18,13 +15,24 @@
     size: "{{ digital_ocean_size_id | mandatory }}"
     image: "{{ digital_ocean_image_id | mandatory }}"
     region: "{{ digital_ocean_region_id | mandatory }}"
-    ssh_keys: "{{ digital_ocean_ssh_keys | mandatory }}"
+    ssh_keys: "{{ digitalocean_reserved_ip_test_resolved_ssh_keys | mandatory }}"
     tags:
       - "{{ do_test_tag }}"
     unique_name: "{{ digital_ocean_unique_name | bool }}"
     timeout: 600
   delegate_to: localhost
   register: do_create
+
+- name: Assign the test droplet to the DigitalOcean project
+  digitalocean.cloud.project_resources:
+    state: present
+    project_name: "{{ do_test_project_name }}"
+    token: "{{ digital_ocean_api_token }}"
+    resources:
+      - "do:droplet:{{ do_create.droplet.id }}"
+  delegate_to: localhost
+  no_log: true
+  when: do_test_project_name | length > 0
 
 - name: Preserve the legacy droplet result shape for the test playbooks
   ansible.builtin.set_fact:
@@ -40,14 +48,8 @@
   loop: "{{ do.droplet.networks.v4 }}"
   when: item.type == 'public'
 
-- name: Wait for SSH to come up
-  delegate_to: localhost
-  ansible.builtin.wait_for:
-    host: "{{ ansible_host }}"
-    port: 22
-    delay: 15
-    timeout: 320
-    state: started
+- name: Configure SSH access to the test droplet
+  ansible.builtin.import_tasks: configure_ssh_access.yml
 
 - name: Set whether the server has been freshly provisioned
   ansible.builtin.set_fact:

@@ -1,0 +1,5 @@
+---
+- name: Resolve effective Reserved IP input
+  ansible.builtin.set_fact:
+    digitalocean_reserved_ip_effective_address: >-
+      {{ digitalocean_reserved_ip_address }}

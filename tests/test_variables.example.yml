@@ -14,5 +14,6 @@ do_ssh_keys:
 # Optional overrides:
 # do_region_id: "lon1"
 # do_size_id: "s-1vcpu-1gb"
+# do_test_project_name: "Inviqa Sandbox"
 # do_test_tag: "ANSIBLE-TEST"
 # AWS credentials are not currently used by this test harness.

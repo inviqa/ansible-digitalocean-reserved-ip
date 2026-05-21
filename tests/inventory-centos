@@ -1,5 +1,0 @@
-[centos]
-centos-stream-10 do_image_id=centos-stream-10-x64
-
-[digital_ocean:children]
-centos

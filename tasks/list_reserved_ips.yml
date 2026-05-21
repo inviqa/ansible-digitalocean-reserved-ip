@@ -1,10 +1,10 @@
 ---
 - name: List Reserved IPs
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/reserved_ips?page=1&per_page=100"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips?page=1&per_page=100"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     method: GET
     status_code:

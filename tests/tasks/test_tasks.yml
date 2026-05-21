@@ -34,7 +34,7 @@
 
 - name: Verify outbound routing through Reserved IP
   when:
-    - enable_reserved_ip_outbound_routing | bool
+    - digitalocean_reserved_ip_enable_outbound_routing | bool
   block:
     - name: Query the droplet's outbound public IP address
       ansible.builtin.uri:

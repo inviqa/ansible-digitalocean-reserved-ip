@@ -1,0 +1,41 @@
+---
+- name: Discover the active NetworkManager connection for the primary interface
+  ansible.builtin.command:
+    argv:
+      - nmcli
+      - -g
+      - GENERAL.CONNECTION
+      - device
+      - show
+      - "{{ reserved_ip_routing_interface }}"
+  register: redhat_nm_connection
+  changed_when: false
+
+- name: Ensure NetworkManager reported an active connection for the primary interface
+  ansible.builtin.assert:
+    that:
+      - redhat_nm_connection.stdout | trim | length > 0
+    fail_msg: >-
+      Could not determine the active NetworkManager connection for
+      {{ reserved_ip_routing_interface }}, so the RedHat-family Reserved IP
+      gateway could not be persisted.
+
+- name: Read the current IPv4 gateway from the active NetworkManager connection
+  ansible.builtin.command:
+    argv:
+      - nmcli
+      - -g
+      - ipv4.gateway
+      - connection
+      - show
+      - "{{ redhat_nm_connection.stdout | trim }}"
+  register: redhat_nm_gateway
+  changed_when: false
+
+- name: Persist the anchor gateway in the active NetworkManager connection
+  community.general.nmcli:
+    conn_name: "{{ redhat_nm_connection.stdout | trim }}"
+    gw4: "{{ anchor_gateway_associated_to_droplet }}"
+    state: present
+  when: redhat_nm_gateway.stdout | trim != anchor_gateway_associated_to_droplet
+  notify: Reboot RedHat host to apply Reserved IP routing

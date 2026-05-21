@@ -1,10 +1,10 @@
 ---
 - name: Check if the requested Reserved IP exists
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/reserved_ips/{{ digital_ocean_effective_reserved_ip }}"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ digitalocean_reserved_ip_effective_address }}"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     method: GET
     status_code:
@@ -33,14 +33,14 @@
 - name: Mark the Reserved IP as already attached to this droplet
   ansible.builtin.set_fact:
     reserved_ip_is_assigned_to_this_droplet: true
-  when: droplet_id_associated_to_reserved_ip | string == digital_ocean_droplet_id | string
+  when: droplet_id_associated_to_reserved_ip | string == digitalocean_reserved_ip_droplet_id | string
 
 - name: Unassign the Reserved IP from any other droplet
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/reserved_ips/{{ digital_ocean_effective_reserved_ip }}/actions"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ digitalocean_reserved_ip_effective_address }}/actions"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     body:
       type: 'unassign'
@@ -62,14 +62,14 @@
 
 - name: Assign the Reserved IP to the requested droplet
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/reserved_ips/{{ digital_ocean_effective_reserved_ip }}/actions"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ digitalocean_reserved_ip_effective_address }}/actions"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     body:
       type: 'assign'
-      droplet_id: "{{ digital_ocean_droplet_id }}"
+      droplet_id: "{{ digitalocean_reserved_ip_droplet_id }}"
     method: POST
     follow_redirects: all
     return_content: true

@@ -1,0 +1,78 @@
+---
+- name: Read current netplan configuration
+  ansible.builtin.slurp:
+    src: /etc/netplan/50-cloud-init.yaml
+  register: netplan_content
+
+- name: Parse netplan YAML
+  ansible.builtin.set_fact:
+    netplan_config: "{{ netplan_content['content'] | b64decode | from_yaml }}"
+
+- name: Ensure network section exists
+  ansible.builtin.set_fact:
+    netplan_config: "{{ netplan_config | combine({'network': {}}, recursive=True) }}"
+
+- name: Ensure ethernets section exists
+  ansible.builtin.set_fact:
+    netplan_config: "{{ netplan_config | combine({'network': {'ethernets': {}}}, recursive=True) }}"
+
+- name: Ensure the primary interface configuration exists
+  ansible.builtin.set_fact:
+    netplan_config: >-
+      {{
+        netplan_config
+        | combine(
+            {'network': {'ethernets': {reserved_ip_routing_interface: {}}}},
+            recursive=True
+          )
+      }}
+
+- name: Preserve existing non-default netplan routes
+  ansible.builtin.set_fact:
+    reserved_ip_preserved_netplan_routes: >-
+      {{
+        netplan_config['network']['ethernets'][reserved_ip_routing_interface]['routes']
+        | default([])
+        | rejectattr('to', 'equalto', '0.0.0.0/0')
+        | rejectattr('to', 'equalto', 'default')
+        | list
+      }}
+
+- name: Build netplan routes for Reserved IP routing
+  ansible.builtin.set_fact:
+    reserved_ip_netplan_routes: >-
+      {{
+        reserved_ip_preserved_netplan_routes
+        + reserved_ip_default_route_entry
+      }}
+  vars:
+    reserved_ip_default_route_entry:
+      - to: '0.0.0.0/0'
+        via: "{{ anchor_gateway_associated_to_droplet }}"
+        on-link: true
+
+- name: Configure the primary interface with routes to anchor gateway
+  ansible.builtin.set_fact:
+    netplan_config: >-
+      {{
+        netplan_config
+        | combine(
+            {
+              'network': {
+                'ethernets': {
+                  reserved_ip_routing_interface: {
+                    'routes': reserved_ip_netplan_routes
+                  }
+                }
+              }
+            },
+            recursive=True
+          )
+      }}
+
+- name: Write updated netplan configuration
+  ansible.builtin.copy:
+    content: "{{ netplan_config | to_nice_yaml }}"
+    dest: /etc/netplan/50-cloud-init.yaml
+    mode: '0600'
+  notify: Apply netplan configuration

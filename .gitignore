@@ -1,4 +1,5 @@
 .ansible/
+workspace.override.yml
 tests/.vagrant
 !.gitignore
 .vault_password

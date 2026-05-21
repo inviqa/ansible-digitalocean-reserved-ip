@@ -53,12 +53,13 @@ Applies to:
 
 Required:
 
-- `ansible-lint <file>` or `ansible-lint .` when role-level context is more representative
+- `ws ansible lint`
 - `yamllint <file>`
 
-Agents must run `ansible-lint` every time an Ansible file is created or
+Agents must run `ws ansible lint` every time an Ansible file is created or
 modified, including files under `tests/`, even if other repo-wide lint commands
-already pass.
+already pass. Do not run `ansible-lint` directly from the host machine for this
+repository.
 
 ### Markdown files
 
@@ -105,18 +106,48 @@ Required:
 12. Do not hand-edit generated or vendored content under `.ansible/`; update the
     role source files in the repository root and regenerate or reinstall test
     dependencies when needed.
-13. When renaming externally created live-test resources, keep cleanup tasks
+13. Keep Workspace container validation isolated from host-generated `.ansible/`
+    cache paths; container Ansible home and role paths should stay inside the
+    container user home unless a generated cache path is intentionally tested.
+14. When renaming externally created live-test resources, keep cleanup tasks
     compatible with the previous names long enough to remove resources left by
     interrupted older runs.
-14. When adding cloud quota or allowance preflight checks, run current-resource
+15. When adding cloud quota or allowance preflight checks, run current-resource
     discovery first and gate only the creation path so idempotent re-runs do
     not fail when the account is already at quota.
-15. Test rescue blocks must re-raise or fail after logging unless the recovered
+16. Test rescue blocks must re-raise or fail after logging unless the recovered
     state is intentionally acceptable and documented in the task.
-16. When parsing provider metadata booleans, compare normalized expected values
+17. For credential validation, keep secret-bearing API calls and variable loads
+    behind `no_log`, but leave non-secret assertion guidance visible so
+    operators can fix missing or invalid local configuration.
+18. When parsing provider metadata booleans, compare normalized expected values
     instead of relying on broad truthiness filters for arbitrary strings.
-17. When editing network configuration, replace only the route or setting owned
+19. When editing network configuration, replace only the route or setting owned
     by this role and preserve unrelated existing entries.
+20. Do not present Workspace `%` argument wrappers as quote-preserving
+    pass-throughs unless a regression proves quoted arguments survive. Prefer a
+    dedicated command or an interactive shell for shell-quoted command lines.
+21. Keep tracked override examples inert by default. Optional provider
+    resources, such as DigitalOcean project assignment, must stay blank unless
+    the operator explicitly configures a real existing value.
+22. When changing Jenkinsfile publication or live-test behavior, keep
+    `docs/jenkins-ci.md`, `docs/ansible-galaxy-release.md`, and `README.md`
+    aligned with the actual split between Jenkins parameters, credential
+    bindings, and Workspace commands.
+23. Jenkins environment and credential requirements should stay declared near
+    the top of `Jenkinsfile` in the top-level `environment` block so required
+    inputs are visible as soon as the file is opened and stage blocks stay
+    small. Prefer this style for new environment values too.
+24. Jenkins operator choices must remain per-build controls, not fixed
+    credential-style environment values. Keep live-test enablement and target,
+    release version selection, and GitHub/Galaxy publication gates as build
+    parameters or an equivalent explicit Jenkins input surface.
+25. Use `include_tasks` instead of `import_tasks` when the included task file
+    contains `ansible.builtin.meta` tasks such as `reset_connection` and the
+    include site has a `when` condition. Static imports propagate the condition
+    to every imported task, and Ansible warns because `reset_connection` does
+    not support `when`; dynamic includes keep the condition on the include
+    boundary.
 
 ## Changelog Policy (Always Required)
 
@@ -124,14 +155,20 @@ Required:
 2. Whenever documentation is added or updated, mention it in
    `CHANGELOG.md` in the same task.
 3. If an `Unreleased` section exists, add changes there instead of creating a
-   new dated release.
+   new dated release. During pre-PR release preparation, add or merge
+   remediation notes into the latest concrete release section when no
+   `Unreleased` section exists instead of creating a new `Unreleased` section.
 4. Do not assign or change a release date for an unreleased section unless
    requested by the user or the change is part of a release finalization
    process.
 5. Only create or date a release entry when the release is actually being
    finalized.
-6. Group entries under clear headings (for example: Added, Changed, Fixed)
-   and keep the wording concise.
+6. Concrete release headings must use a plain `YYYY-MM-DD` date with no
+   suffixes.
+7. Group entries under clear headings (for example: Added, Changed, Fixed)
+   and keep the wording concise. Merge repeated notes about the same command,
+   credential, workflow, or documentation surface so reviewers can scan the
+   release notes without following duplicate back-and-forth entries.
 
 ## README Update Policy (Always Required)
 
@@ -146,7 +183,7 @@ Required:
 
 - Shell: `shellcheck --enable=all path/to/file.sh`
 - YAML: `yamllint path/to/file.yml`
-- Ansible: `ansible-lint .`
+- Ansible: `ws ansible lint`
 - Markdown: `markdownlint AGENTS.md README.md CHANGELOG.md TODO.md`
 - Python: `ruff check path/to/file.py`
 

@@ -1,10 +1,10 @@
 ---
 - name: Retrieve the account allowance for Reserved IP creation
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/account"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/account"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     method: GET
     follow_redirects: all
@@ -22,10 +22,10 @@
 
 - name: Retrieve the number of Reserved IPs already in use
   ansible.builtin.uri:
-    url: "{{ digital_ocean_api_base_url }}/reserved_ips?page=1&per_page=20"
+    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips?page=1&per_page=20"
     headers:
       Content-Type: 'application/json'
-      Authorization: "Bearer {{ digital_ocean_api_token }}"
+      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
     method: GET
     follow_redirects: all

@@ -1,18 +1,16 @@
 ---
-- name: Delete Reserved IPs
+- name: Check if the DigitalOcean droplet exists
   ansible.builtin.uri:
-    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ item }}"
+    url: >-
+      {{ digitalocean_reserved_ip_api_base_url }}/droplets/{{ digitalocean_reserved_ip_droplet_id }}
     headers:
       Content-Type: 'application/json'
       Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
     body_format: json
-    method: DELETE
+    method: GET
     follow_redirects: all
     return_content: true
-    status_code:
-      - 204
-    timeout: 120
+    timeout: 60
   delegate_to: localhost
-  register: do_reserved_ip_delete_json_response
+  register: do_droplet_check_json_response
   no_log: true
-  loop: "{{ do_reserved_ips_to_delete }}"
