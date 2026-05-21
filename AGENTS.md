@@ -53,12 +53,13 @@ Applies to:
 
 Required:
 
-- `ansible-lint <file>` or `ansible-lint .` when role-level context is more representative
+- `ws ansible lint`
 - `yamllint <file>`
 
-Agents must run `ansible-lint` every time an Ansible file is created or
+Agents must run `ws ansible lint` every time an Ansible file is created or
 modified, including files under `tests/`, even if other repo-wide lint commands
-already pass.
+already pass. Do not run `ansible-lint` directly from the host machine for this
+repository.
 
 ### Markdown files
 
@@ -160,7 +161,9 @@ Required:
    process.
 5. Only create or date a release entry when the release is actually being
    finalized.
-6. Group entries under clear headings (for example: Added, Changed, Fixed)
+6. Concrete release headings must use a plain `YYYY-MM-DD` date with no
+   suffixes.
+7. Group entries under clear headings (for example: Added, Changed, Fixed)
    and keep the wording concise.
 
 ## README Update Policy (Always Required)
@@ -176,7 +179,7 @@ Required:
 
 - Shell: `shellcheck --enable=all path/to/file.sh`
 - YAML: `yamllint path/to/file.yml`
-- Ansible: `ansible-lint .`
+- Ansible: `ws ansible lint`
 - Markdown: `markdownlint AGENTS.md README.md CHANGELOG.md TODO.md`
 - Python: `ruff check path/to/file.py`
 

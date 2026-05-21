@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.2.0] - 2026-05-20
 
 ### Live Tests
 
@@ -15,6 +15,9 @@
 
 ### Documentation
 
+- Corrected the `0.2.0` changelog heading to use a valid ISO release date.
+- Documented that concrete changelog release headings must use plain
+  `YYYY-MM-DD` dates.
 - Split Mermaid flowcharts into shorter phase-oriented blocks for Markdown
   preview readability.
 - Documented the simple-command contract for non-interactive `ws console`
@@ -24,10 +27,13 @@
 
 - Isolated container Ansible cache paths from host-generated `.ansible/` links
   during Workspace validation.
+- Kept Workspace `ansible-lint` offline through the existing `ws console`
+  boundary so container validation uses image-installed collections instead of
+  host-generated role cache links.
+- Documented that local Ansible linting should use `ws ansible lint` instead
+  of host-level `ansible-lint`.
 - Made non-interactive `ws console <command>` reject quoted shell snippets
   instead of corrupting them.
-
-## [0.2.0] - 2026-05-20a
 
 ### CI
 
