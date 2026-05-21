@@ -155,7 +155,9 @@ Required:
 2. Whenever documentation is added or updated, mention it in
    `CHANGELOG.md` in the same task.
 3. If an `Unreleased` section exists, add changes there instead of creating a
-   new dated release.
+   new dated release. During pre-PR release preparation, add or merge
+   remediation notes into the latest concrete release section when no
+   `Unreleased` section exists instead of creating a new `Unreleased` section.
 4. Do not assign or change a release date for an unreleased section unless
    requested by the user or the change is part of a release finalization
    process.
@@ -164,7 +166,9 @@ Required:
 6. Concrete release headings must use a plain `YYYY-MM-DD` date with no
    suffixes.
 7. Group entries under clear headings (for example: Added, Changed, Fixed)
-   and keep the wording concise.
+   and keep the wording concise. Merge repeated notes about the same command,
+   credential, workflow, or documentation surface so reviewers can scan the
+   release notes without following duplicate back-and-forth entries.
 
 ## README Update Policy (Always Required)
 

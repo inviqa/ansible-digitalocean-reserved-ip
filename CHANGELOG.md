@@ -2,127 +2,72 @@
 
 ## [0.2.0] - 2026-05-20
 
-### Live Tests
+### CI and Workspace
 
-- Made live-test SSH key selector and local SSH-agent fingerprint resolution
-  output visible, while keeping DigitalOcean API key retrieval hidden.
-- Kept optional DigitalOcean project assignment inert in tracked Workspace
-  examples unless an operator configures an existing project.
-- Set the Jenkins live-test DigitalOcean project name to `Inviqa Sandbox` in
-  the top-level pipeline environment.
-- Kept non-secret DigitalOcean credential setup guidance visible while
-  preserving `no_log` on token-bearing API checks.
-
-### Documentation
-
-- Corrected the `0.2.0` changelog heading to use a valid ISO release date.
-- Documented that concrete changelog release headings must use plain
-  `YYYY-MM-DD` dates.
-- Split Mermaid flowcharts into shorter phase-oriented blocks for Markdown
-  preview readability.
-- Documented the simple-command contract for non-interactive `ws console`
-  usage.
-
-### Maintenance
-
-- Isolated container Ansible cache paths from host-generated `.ansible/` links
-  during Workspace validation.
-- Kept Workspace `ansible-lint` offline through the existing `ws console`
-  boundary so container validation uses image-installed collections instead of
-  host-generated role cache links.
-- Documented that local Ansible linting should use `ws ansible lint` instead
-  of host-level `ansible-lint`.
-- Made non-interactive `ws console <command>` reject quoted shell snippets
-  instead of corrupting them.
-
-### CI
-
-- Corrected Jenkins credential IDs for DigitalOcean live-test credentials.
-- Reduced duplicate Jenkins credential bindings and standardized release
-  credentials on the expanded `GITHUB_TOKEN`, `DIGITAL_OCEAN_API_TOKEN`, and
-  `DIGITAL_OCEAN_SSH_KEYS` environment names.
-- Standardized the Jenkins Ansible Galaxy credential ID on the shared
-  `ansible-roles-galaxy-token` credential.
-- Kept `DO_OAUTH_TOKEN` as a backward-compatible local input fallback for
-  DigitalOcean API credentials.
-- Simplified the Workspace console Dockerfile requirement-copy paths to generic
-  temporary filenames.
-- Reduced the Workspace destroy timeout so local test containers stop faster.
-- Added a Workspace-provided DigitalOcean project name for live-test droplets
-  and assigned created test droplets to that project.
-- Documented the preferred `workspace.override.yml` live-test configuration
-  path alongside `tests/test_variables.yml` for direct Ansible execution.
-
-### Changed
-
-- Switched Jenkins live tests to the
-  `digitalocean-ansible-roles-oauth-token` credential.
 - Moved Jenkins validation and release publication onto reusable Workspace
-  commands.
-- Added Workspace commands for DigitalOcean live testing, GitHub release
-  checks, GitHub publication, Ansible Galaxy token checks, Galaxy status, and
-  Galaxy import.
-- Required explicit Workspace live-test phases with
-  `ws test-live provision <target>`, `ws test-live cleanup <target>`, and
-  `ws test-live full-cycle <target>`.
-- Implemented those live-test phases as true Workspace subcommands instead of
-  dispatching them through one `test-live <action> <target>` command.
-- Made live-test targets optional at the Workspace parser level so missing or
-  invalid targets print the same phase-specific usage message.
-- Simplified the live-test subcommand scripts by removing one-off Bash helper
-  functions.
-- Namespaced Ansible helper commands under `ws ansible lint`,
-  `ws ansible syntax`, `ws ansible playbook`, and
-  `ws ansible galaxy <action>` subcommands, with grouped Workspace usage help
-  for Ansible, Galaxy, config, GitHub, global, and secret command groups.
-- Updated testing and release documentation for `ws ansible playbook`,
-  `ws test-live <phase> <target>`, and nested GitHub/Galaxy release actions.
-- Kept Jenkins on the safe `full-cycle` live-test phase with a second
-  idempotent cleanup safety net.
-- Replaced direct single-family Ansible inventory guidance with `--limit`
-  examples against the canonical `tests/inventory`.
-- Removed the duplicate single-family inventory files in favor of filtering
-  `tests/inventory` by group.
-- Kept Jenkins publication and live-test operator choices as build parameters
-  while keeping credential bindings centralized in the Jenkinsfile environment.
-- Renamed the role input variables to the `digitalocean_reserved_ip_*` prefix
-  while keeping fallback support for the previous `digital_ocean_*` names.
-- Moved test harness guidance into `docs/testing.md` and left
-  `tests/README.md` as a pointer to the maintained documentation.
-- Documented all Workspace override attributes used by live tests and release
-  commands in the testing guide.
-- Added Jenkinsfile lint guidance and a live-test flow diagram to the testing
-  documentation.
+  commands for linting, syntax checks, DigitalOcean live testing, GitHub
+  release checks and publication, and Ansible Galaxy token, status, and import
+  actions.
+- Namespaced helper commands under `ws ansible lint`, `ws ansible syntax`,
+  `ws ansible playbook`, and `ws ansible galaxy <action>`, with grouped
+  Workspace usage help for Ansible, Galaxy, config, GitHub, global, and secret
+  command groups.
+- Kept Ansible, Galaxy, GitHub, and provider CLIs inside the Workspace
+  `console` boundary, including offline `ansible-lint`, isolated container
+  Ansible cache paths, and simple-command rejection for quoted
+  `ws console <command>` snippets.
+- Standardized Jenkins credentials and release environment names on
+  `GITHUB_TOKEN`, `DIGITAL_OCEAN_API_TOKEN`, `DIGITAL_OCEAN_SSH_KEYS`, the
+  shared `ansible-roles-galaxy-token`, and the
+  `digitalocean-ansible-roles-oauth-token` live-test credential, while keeping
+  `DO_OAUTH_TOKEN` as a local DigitalOcean API fallback.
+- Kept Jenkins publication and live-test operator choices as build parameters,
+  with centralized top-level credential bindings, safe `full-cycle` live tests,
+  and a second idempotent cleanup safety net.
+
+### Role and Live Tests
+
+- Renamed role input variables to the `digitalocean_reserved_ip_*` prefix while
+  keeping fallback support for previous `digital_ocean_*` names.
+- Reorganized the role task flow into focused files for Reserved IP assignment,
+  outbound routing preparation, immediate route updates, Netplan,
+  NetworkManager, SSH handoff, reporting, and cleanup.
 - Resolved live-test DigitalOcean SSH key selectors through the API before
   Droplet creation so IDs, fingerprints, names, list values, and environment
-  strings are accepted consistently.
-- Made Workspace-provided DigitalOcean SSH key selectors take precedence over
-  local `tests/test_variables.yml` values during live tests.
-- Added live-test SSH agent validation against DigitalOcean MD5 fingerprints
-  and SSH key selection before Ansible connects to the created Droplet.
-- Set live-test SSH arguments so temporary DigitalOcean droplets bypass local
-  SSH proxy configuration during direct Ansible runs.
-- Reorganized the role task flow so the main task file and outbound routing
-  setup delegate to focused task files.
-- Avoided Ansible `reset_connection` conditional warnings during live outbound
-  routing tests and waited for the post-cutover SSH connection before
-  continuing Debian-family routing configuration.
-- Clarified the route-cutover task names so TCP port readiness and Ansible SSH
-  session readiness are distinct in live-test output.
-- Documented when agents must use dynamic Ansible task includes to keep
-  conditional logic away from `reset_connection` meta tasks.
-- Extracted shared live-test override loading and DigitalOcean credential
-  validation into reusable test task files.
-- Documented the Ansible Galaxy release workflow and the Jenkins credentials
-  used for GitHub and Galaxy publication.
-- Kept the Ansible Galaxy release documentation aligned with Jenkins
-  parameters and Workspace release checks.
-- Clarified where Jenkins maintainers set per-build pipeline parameters.
-- Clarified agent guidance for keeping Jenkins parameters, credential bindings,
-  and Workspace commands documented consistently.
+  strings are accepted consistently, with Workspace-provided selectors taking
+  precedence for live tests.
+- Added live-test SSH agent validation against DigitalOcean MD5 fingerprints,
+  made non-secret SSH selector diagnostics visible, and kept token-bearing API
+  checks hidden behind `no_log`.
+- Added optional Workspace-driven DigitalOcean project assignment for live-test
+  Droplets, kept tracked examples inert by default, and set Jenkins to assign
+  live-test Droplets to `Inviqa Sandbox`.
+- Required explicit live-test phases:
+  `ws test-live provision <target>`, `ws test-live cleanup <target>`, and
+  `ws test-live full-cycle <target>`.
+- Consolidated live-test targeting on `tests/inventory` plus `--limit`
+  examples, removing duplicate single-family inventory files.
+- Avoided `reset_connection` conditional warnings during outbound routing
+  tests and waited for post-cutover SSH readiness before continuing
+  Debian-family routing configuration, with clearer task names for TCP and SSH
+  readiness checks.
+
+### Documentation and Release Readiness
+
+- Updated README, testing, Jenkins CI, and Ansible Galaxy release documentation
+  for Workspace commands, Jenkins parameters, current credential IDs, release
+  checks, direct Ansible variables, and live-test flow diagrams.
+- Corrected the `0.2.0` changelog heading to a plain `YYYY-MM-DD` date and
+  documented that release-prep changelog entries should stay compact in the
+  latest concrete release section when no `Unreleased` section exists.
+- Moved test harness guidance into `docs/testing.md`, left `tests/README.md` as
+  a pointer, and documented all Workspace override attributes used by live
+  tests and release commands.
+- Clarified agent guidance for Jenkins parameters, credential bindings,
+  Workspace commands, dynamic includes around `reset_connection`, and
+  reviewer-readable changelog structure.
 - Added a README diagram for the Reserved IP outbound routing handoff and
   operating-system-specific persistence flow.
-- Clarified the README origin note without referencing future publication.
 - Sanitized the tracked live-test variable file so real credentials are read
   from Workspace overrides, environment variables, `tests/test_variables.yml`,
   or Jenkins credentials.
