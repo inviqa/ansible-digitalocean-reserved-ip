@@ -5,7 +5,6 @@
   register: digitalocean_reserved_ip_test_ssh_agent_public_keys
   changed_when: false
   failed_when: false
-  no_log: true
 
 - name: Resolve local SSH agent MD5 fingerprints
   ansible.builtin.command: ssh-keygen -E md5 -lf -
@@ -15,14 +14,14 @@
   loop: "{{ digitalocean_reserved_ip_test_ssh_agent_public_keys.stdout_lines | default([]) }}"
   register: digitalocean_reserved_ip_test_ssh_agent_md5_fingerprints
   changed_when: false
-  no_log: true
+  loop_control:
+    label: "{{ item | regex_replace('^(\\S+)\\s+(\\S{16}).*$', '\\1 \\2...') }}"
   when: digitalocean_reserved_ip_test_ssh_agent_public_keys.rc == 0
 
 - name: Store selected DigitalOcean SSH key fingerprint values
   ansible.builtin.set_fact:
     digitalocean_reserved_ip_test_do_ssh_key_fingerprint_values: "{{ digitalocean_reserved_ip_test_resolved_ssh_keys }}"
   delegate_to: localhost
-  no_log: true
 
 - name: Validate selected DigitalOcean SSH key is loaded in the SSH agent
   ansible.builtin.assert:

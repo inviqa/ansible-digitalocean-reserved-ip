@@ -9,11 +9,12 @@ maintenance.
 The pipeline runs on a Jenkins node with Workspace installed and executes:
 
 - Workspace environment startup with `ws enable`
-- role linting through `ws ansible-lint`
-- syntax checks through `ws syntax`
+- role linting through `ws ansible lint`
+- syntax checks through `ws ansible syntax`
 - non-mutating release preflight checks for GitHub release readiness, Ansible
   Galaxy token configuration, and Galaxy role metadata
-- the live DigitalOcean Reserved IP test matrix through `ws test-live`
+- the live DigitalOcean Reserved IP test matrix through
+  `ws test-live full-cycle`
 - optional GitHub release creation from `main`
 - optional Ansible Galaxy import from `main`
 - failure notification to the `ops-integrations` Slack channel
@@ -21,29 +22,62 @@ The pipeline runs on a Jenkins node with Workspace installed and executes:
 The live test stage provisions real DigitalOcean droplets and Reserved IPs, so
 it incurs provider cost while it runs.
 
-The Jenkins pipeline mirrors the local live-test path. Cleanup is wired into
-`ws test-live <target>` so provider resources are removed after a failed run
-too.
+The Jenkins pipeline mirrors the safe local live-test path. The stage runs
+`ws test-live full-cycle <target>`, and the pipeline post-action runs
+`ws test-live cleanup <target>` again as an idempotent safety net before
+destroying the Workspace environment. The diagrams split validation,
+live-test gating, publication, and post-build actions so Markdown previews do
+not need to render one oversized horizontal canvas.
+
+The validation phase starts Workspace and runs the non-mutating checks before
+any live provider work.
 
 ```mermaid
 flowchart LR
-  checkout["Pipeline checkout"] --> build["Run ws enable"]
-  build --> lint["Run ws ansible-lint"]
-  lint --> syntax["Run ws syntax"]
-  syntax --> preflight["Run release preflight"]
-  preflight --> gate{"RUN_LIVE_TESTS?"}
-  gate -->|No| finish["Finish build"]
-  gate -->|Yes| live["Run ws test-live with SSH agent"]
-  live --> github_gate{"Publish GitHub release on main?"}
-  github_gate -->|Yes| github_release["Create GitHub release"]
-  github_gate -->|No| galaxy_gate{"Publish Galaxy release on main?"}
+  checkout["Checkout"] --> enable["ws enable"]
+  enable --> lint["ws ansible lint"]
+  lint --> syntax["ws ansible syntax"]
+  syntax --> preflight["Release preflight"]
+```
+
+The live-test gate either runs the DigitalOcean full-cycle matrix or hands the
+build directly to release publication gates.
+
+```mermaid
+flowchart LR
+  preflight["Release preflight"] --> gate{"RUN_LIVE_TESTS?"}
+  gate -->|Yes| live["Live test"]
+  gate -->|No| publish["Publication gates"]
+  live --> publish
+```
+
+The publication phase keeps GitHub release creation and Galaxy import behind
+their separate `main`-branch flags.
+
+```mermaid
+flowchart LR
+  publish["Publication gates"] --> github_gate{"GitHub flag?"}
+  github_gate -->|Yes| github_release["GitHub release"]
+  github_gate -->|No| galaxy_gate{"Galaxy flag?"}
   github_release --> galaxy_gate
-  galaxy_gate -->|Yes| galaxy_release["Import Galaxy role"]
-  galaxy_gate -->|No| notify{"Build failed?"}
-  galaxy_release --> notify
-  notify -->|Yes| slack["Send Slack failure notification"]
-  notify -->|No| finish
-  slack --> finish
+  galaxy_gate -->|Yes| galaxy_release["Galaxy import"]
+  galaxy_gate -->|No| post["Post actions"]
+  galaxy_release --> post
+```
+
+The post-build phase sends failure notifications, reruns live cleanup when
+needed, and then destroys the Workspace environment.
+
+```mermaid
+flowchart LR
+  post["Post actions"] --> failure{"Build failed?"}
+  failure -->|Yes| slack["Slack alert"]
+  failure -->|No| cleanup_gate{"Live tests ran?"}
+  slack --> cleanup_gate
+  cleanup_gate -->|Yes| cleanup["Cleanup"]
+  cleanup_gate -->|No| destroy["ws destroy"]
+  cleanup --> destroy
+  destroy --> clean["cleanWs"]
 ```
 
 Markdown and YAML checks are intentionally kept as pre-handoff checks rather
@@ -101,7 +135,7 @@ parameters:
 | Parameter | Default | Purpose |
 | --- | --- | --- |
 | `RUN_LIVE_TESTS` | `true` | Enables the DigitalOcean-backed integration test stage. |
-| `LIVE_TEST_TARGET` | `all` | Live test target passed to `ws test-live`: `all`, `debian`, `centos`, or `ubuntu`. |
+| `LIVE_TEST_TARGET` | `all` | Target passed to `ws test-live full-cycle` and cleanup safety net: `all`, `debian`, `centos`, or `ubuntu`. |
 | `RELEASE_VERSION` | empty | Optional release version to publish. When empty, Jenkins uses the latest concrete release section in `CHANGELOG.md`. |
 | `PUBLISH_GITHUB_RELEASE` | `true` | Enables GitHub release publication on `main` after validation succeeds. |
 | `PUBLISH_ANSIBLE_GALAXY_RELEASE` | `true` | Enables Ansible Galaxy import on `main` after validation succeeds. |
@@ -139,8 +173,8 @@ Every Jenkins build runs a non-mutating release preflight before live tests:
 
 ```text
 ws github release check
-ws ansible-galaxy check-token
-ws ansible-galaxy info
+ws ansible galaxy check-token
+ws ansible galaxy info
 ```
 
 The GitHub check accepts exit code `0` when the release already exists and exit
@@ -149,7 +183,7 @@ The latter is expected for a pull request that prepares a release.
 
 The Galaxy checks validate token configuration, command wiring, and Galaxy API
 read reachability without importing a new role release. The
-`ws ansible-galaxy status` command remains available for manual import-status
+`ws ansible galaxy status` command remains available for manual import-status
 diagnostics, but Jenkins does not use it as a preflight gate because Galaxy can
 return transient server errors for the status endpoint.
 
@@ -159,7 +193,7 @@ The GitHub release stage only calls `ws github release publish`. That Workspace
 command derives the release body from `CHANGELOG.md`, using `RELEASE_VERSION`
 when provided or the latest concrete release section when it is left blank.
 
-The Ansible Galaxy stage only calls `ws ansible-galaxy publish`. That Workspace
+The Ansible Galaxy stage only calls `ws ansible galaxy publish`. That Workspace
 command checks the GitHub release first, exits without importing when the same
 version is already visible on Galaxy, otherwise imports the `main` branch and
 verifies the version with a pinned `ansible-galaxy role install`.
@@ -175,7 +209,7 @@ Required data:
   - local equivalent: `ws github release publish`
 - Ansible Galaxy credential ID: `ansible-roles-galaxy-token`
 - Ansible Galaxy publication flag: `PUBLISH_ANSIBLE_GALAXY_RELEASE=true`
-  - local equivalent: `ws ansible-galaxy publish`
+  - local equivalent: `ws ansible galaxy publish`
 - Galaxy GitHub owner/repository:
   `inviqa/ansible-digitalocean-reserved-ip`
 - Galaxy branch: `main`
@@ -209,7 +243,7 @@ The Jenkinsfile mirrors the Workspace test sequence:
 
 ```text
 ws enable
-ws ansible-lint
-ws syntax
-ws test-live all
+ws ansible lint
+ws ansible syntax
+ws test-live full-cycle all
 ```

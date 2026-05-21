@@ -8,14 +8,20 @@ Use the current release version wherever the examples show `0.2.0`.
 
 ## Release Flow
 
+The release flow groups local preparation and external publication while
+keeping the `main` branch handoff explicit.
+
 ```mermaid
 flowchart LR
-  A["Finish local changes"] --> B["Run local validation"]
-  B --> C["Merge to main"]
-  C --> D["Create GitHub tag and release"]
-  D --> E["Import main into Ansible Galaxy"]
-  E --> F["Check Galaxy import status"]
-  F --> G["Verify pinned role install"]
+  subgraph prepare["Prepare"]
+    direction LR
+    changes["Changes"] --> validate["Validate"] --> merge["Merge main"]
+  end
+  subgraph publish["Publish"]
+    direction LR
+    github["GitHub"] --> galaxy["Galaxy"] --> status["Status"] --> install["Install check"]
+  end
+  merge --> github
 ```
 
 ## Release Order
@@ -35,7 +41,7 @@ Run the repository checks that apply to the release changes. At minimum, use the
 targeted linters for changed files and run the role lint before publishing:
 
 ```bash
-ws ansible-lint
+ws ansible lint
 markdownlint -c ~/.markdownlint.json README.md CHANGELOG.md docs/ansible-galaxy-release.md
 ```
 
@@ -80,6 +86,18 @@ Set `RELEASE_VERSION` to target a specific changelog section:
 RELEASE_VERSION=0.2.0 ws github release check
 RELEASE_VERSION=0.2.0 ws github release publish
 ```
+
+Use these Workspace release actions:
+
+| Command | Purpose |
+| --- | --- |
+| `ws github release check` | Verify that the changelog release is already published on GitHub. |
+| `ws github release publish` | Create the GitHub release from the latest concrete changelog entry. |
+| `ws ansible galaxy check-token` | Verify that the Galaxy token is available before token-required actions. |
+| `ws ansible galaxy check-release` | Verify that the GitHub release exists and the pinned Galaxy install succeeds. |
+| `ws ansible galaxy info` | Show the currently indexed Galaxy role metadata. |
+| `ws ansible galaxy status` | Show the latest Galaxy import status. |
+| `ws ansible galaxy publish` | Import `main` into Galaxy and verify the pinned Galaxy install. |
 
 ## Ansible Galaxy Token
 
@@ -143,7 +161,7 @@ ws github release check
 After the GitHub release and tag exist on `main`, run:
 
 ```bash
-ws ansible-galaxy publish
+ws ansible galaxy publish
 ```
 
 This imports the role with the repository's fixed Galaxy publication settings:
@@ -180,7 +198,7 @@ Both Jenkins publication stages call Workspace commands directly:
 
 ```bash
 ws github release publish
-ws ansible-galaxy publish
+ws ansible galaxy publish
 ```
 
 This keeps Jenkins as an orchestrator only. The release checks and publication
@@ -206,13 +224,13 @@ listed above.
 Check the currently indexed role metadata without a token:
 
 ```bash
-ws ansible-galaxy info
+ws ansible galaxy info
 ```
 
 Check the latest import status with a token:
 
 ```bash
-ws ansible-galaxy status
+ws ansible galaxy status
 ```
 
 After import, confirm that Galaxy reports:
@@ -241,7 +259,7 @@ For future releases, replace `0.2.0` with the release tag.
 ## Troubleshooting
 
 - If Galaxy still reports `github_branch: master`, rerun
-  `ws ansible-galaxy publish` after confirming the GitHub default branch is
+  `ws ansible galaxy publish` after confirming the GitHub default branch is
   `main`.
 - If Galaxy does not show the new version, confirm the tag was pushed to GitHub
   and matches SemVer.
@@ -250,7 +268,7 @@ For future releases, replace `0.2.0` with the release tag.
 - If `ws github release check` exits with code `2`, run
   `ws github release publish` or create the GitHub release manually before the
   Galaxy import.
-- If `ws ansible-galaxy status` fails without a token, set
+- If `ws ansible galaxy status` fails without a token, set
   `ansible.galaxy.token` in `workspace.override.yml` or export
   `ANSIBLE_GALAXY_TOKEN`.
 - If Jenkins starts failing after a Galaxy token was reloaded in the UI, update

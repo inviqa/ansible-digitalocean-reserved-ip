@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Live Tests
+
+- Made live-test SSH key selector and local SSH-agent fingerprint resolution
+  output visible, while keeping DigitalOcean API key retrieval hidden.
+- Kept optional DigitalOcean project assignment inert in tracked Workspace
+  examples unless an operator configures an existing project.
+- Kept non-secret DigitalOcean credential setup guidance visible while
+  preserving `no_log` on token-bearing API checks.
+
+### Documentation
+
+- Split Mermaid flowcharts into shorter phase-oriented blocks for Markdown
+  preview readability.
+- Documented the simple-command contract for non-interactive `ws console`
+  usage.
+
+### Maintenance
+
+- Isolated container Ansible cache paths from host-generated `.ansible/` links
+  during Workspace validation.
+- Made non-interactive `ws console <command>` reject quoted shell snippets
+  instead of corrupting them.
+
 ## [0.2.0] - 2026-05-20a
 
 ### CI
@@ -31,11 +54,23 @@
 - Added Workspace commands for DigitalOcean live testing, GitHub release
   checks, GitHub publication, Ansible Galaxy token checks, Galaxy status, and
   Galaxy import.
-- Required explicit Workspace live-test targets with `ws test-live all`,
-  `ws test-live debian`, `ws test-live centos`, or `ws test-live ubuntu`.
-- Required the same explicit target shape for cleanup with
-  `ws cleanup-live all`, `ws cleanup-live debian`, `ws cleanup-live centos`, or
-  `ws cleanup-live ubuntu`.
+- Required explicit Workspace live-test phases with
+  `ws test-live provision <target>`, `ws test-live cleanup <target>`, and
+  `ws test-live full-cycle <target>`.
+- Implemented those live-test phases as true Workspace subcommands instead of
+  dispatching them through one `test-live <action> <target>` command.
+- Made live-test targets optional at the Workspace parser level so missing or
+  invalid targets print the same phase-specific usage message.
+- Simplified the live-test subcommand scripts by removing one-off Bash helper
+  functions.
+- Namespaced Ansible helper commands under `ws ansible lint`,
+  `ws ansible syntax`, `ws ansible playbook`, and
+  `ws ansible galaxy <action>` subcommands, with grouped Workspace usage help
+  for Ansible, Galaxy, config, GitHub, global, and secret command groups.
+- Updated testing and release documentation for `ws ansible playbook`,
+  `ws test-live <phase> <target>`, and nested GitHub/Galaxy release actions.
+- Kept Jenkins on the safe `full-cycle` live-test phase with a second
+  idempotent cleanup safety net.
 - Replaced direct single-family Ansible inventory guidance with `--limit`
   examples against the canonical `tests/inventory`.
 - Removed the duplicate single-family inventory files in favor of filtering
@@ -46,6 +81,8 @@
   while keeping fallback support for the previous `digital_ocean_*` names.
 - Moved test harness guidance into `docs/testing.md` and left
   `tests/README.md` as a pointer to the maintained documentation.
+- Documented all Workspace override attributes used by live tests and release
+  commands in the testing guide.
 - Added Jenkinsfile lint guidance and a live-test flow diagram to the testing
   documentation.
 - Resolved live-test DigitalOcean SSH key selectors through the API before

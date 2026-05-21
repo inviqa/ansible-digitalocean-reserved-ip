@@ -26,7 +26,7 @@ The default inventory currently exercises:
 | Ubuntu | `ubuntu-24-04-x64` |
 
 Single-family runs use the `debian`, `centos`, and `ubuntu` inventory groups
-through Ansible `--limit`.
+through Workspace's `WS_PLAYBOOK_LIMIT` wrapper around Ansible `--limit`.
 
 ## Setup
 
@@ -46,14 +46,38 @@ it from the example first:
 cp workspace.override.yml.example workspace.override.yml
 ```
 
-Set `test.digitalocean.api_token`, `test.digitalocean.ssh_keys`, and
-`test.digitalocean.project_name`. SSH key selectors can be IDs, fingerprints,
-or names. In `workspace.override.yml`, `test.digitalocean.ssh_keys` is a list.
-When passed through environment variables or Jenkins credentials, multiple
-selectors can be comma or newline separated. The selected DigitalOcean SSH keys
-must match private keys loaded in the forwarded SSH agent.
-The harness validates that match before creating a Droplet and uses the
-selected DigitalOcean public key to steer SSH agent authentication.
+Set the Workspace attributes needed for the commands you plan to run:
+
+| Attribute | Used by | Purpose |
+| --- | --- | --- |
+| `test.digitalocean.api_token` | Live tests | DigitalOcean API token used to create and delete temporary Droplets and Reserved IPs. |
+| `test.digitalocean.ssh_keys` | Live tests | DigitalOcean SSH key selectors to inject into temporary Droplets. |
+| `test.digitalocean.project_name` | Live tests | Optional DigitalOcean project name for assigning temporary Droplets. |
+| `ansible.galaxy.token` | Release commands | Ansible Galaxy API token used by token-required Galaxy checks, status, and import commands. |
+| `github.api_token` | Release commands | GitHub API token used by GitHub release checks and publication commands. |
+
+For example:
+
+```ruby
+attribute('test.digitalocean.api_token'): 'dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+attribute('test.digitalocean.ssh_keys'): ['12345678']
+attribute('test.digitalocean.project_name'): ''
+attribute('ansible.galaxy.token'): 'your-galaxy-token'
+attribute('github.api_token'): 'your-github-token'
+```
+
+Set `test.digitalocean.project_name` only when the temporary test Droplets
+should be assigned to an existing DigitalOcean project.
+
+For live tests, `test.digitalocean.api_token` and
+`test.digitalocean.ssh_keys` are required. SSH key selectors can be IDs,
+fingerprints, or names. In `workspace.override.yml`,
+`test.digitalocean.ssh_keys` is a list. When passed through environment
+variables or Jenkins credentials, multiple selectors can be comma or newline
+separated. The selected DigitalOcean SSH keys must match private keys loaded in
+the forwarded SSH agent. The harness validates that match before creating a
+Droplet and uses the selected DigitalOcean public key to steer SSH agent
+authentication.
 
 For direct Ansible runs without Workspace, create the gitignored test variable
 file instead:
@@ -66,7 +90,7 @@ cp tests/test_variables.example.yml tests/test_variables.yml
 do_test_api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 do_ssh_keys:
   - "12345678"
-do_test_project_name: "Inviqa Sandbox"
+# do_test_project_name: "existing-project-name"
 ```
 
 To list available SSH key IDs and fingerprints with `doctl`:
@@ -101,54 +125,71 @@ ws
 Useful commands:
 
 ```text
-ws syntax
-ws ansible-lint
+ws ansible syntax
+ws ansible lint
+ws ansible playbook tests/playbook.yml tests/inventory
 ws lint-jenkinsfile
-ws test-live all
-ws test-live debian
-ws test-live centos
-ws test-live ubuntu
-ws cleanup-live all
-ws cleanup-live debian
-ws cleanup-live centos
-ws cleanup-live ubuntu
+ws test-live provision all
+ws test-live cleanup all
+ws test-live full-cycle all
+ws test-live provision debian
+ws test-live provision centos
+ws test-live provision ubuntu
 ```
 
-Both `ws console` and `ws ansible-playbook` load live-test environment values
+Both `ws console` and `ws ansible playbook` load live-test environment values
 from `workspace.override.yml` and forward them into the `console` container.
-The live playbooks also load `tests/test_variables.yml` directly, so direct
-Ansible execution can use test variables without Workspace.
+The live playbooks also load `tests/test_variables.yml` directly, so manual
+Workspace playbook runs and intentional raw Ansible runs both use test
+variables.
 
-Use `ws syntax` for syntax checks and `ws ansible-lint` for role linting.
+Use `ws console` with no argument for an interactive shell when a command needs
+shell quoting. The non-interactive `ws console <command>` form is intentionally
+limited to simple whitespace-separated commands used by Workspace helpers.
+
+Use `ws ansible syntax` for syntax checks and `ws ansible lint` for role linting.
 
 ## DigitalOcean Live Tests
 
-Run the full DigitalOcean-backed end-to-end matrix:
+The live-test command has three explicit phases:
 
 ```text
-ws test-live all
+ws test-live provision all
+ws test-live cleanup all
+ws test-live full-cycle all
+```
+
+`provision` creates the temporary Droplets, installs Python, applies the
+Reserved IP role, verifies the Reserved IP and outbound routing state, and
+leaves the billable resources running for manual inspection.
+
+`cleanup` removes Reserved IPs associated with matching test Droplets and then
+deletes the Droplets. It is idempotent and can be run after an interrupted or
+already-cleaned test.
+
+`full-cycle` is the CI-safe path. It runs `provision`, then always runs
+`cleanup`, including when provisioning or validation fails.
+
+Run one family only:
+
+```text
+ws test-live full-cycle debian
+ws test-live full-cycle centos
+ws test-live full-cycle ubuntu
+```
+
+For manual playbook runs, use the Workspace wrapper from the repository root:
+
+```text
+ws ansible playbook tests/playbook.yml tests/inventory
 ```
 
 Run one family only:
 
 ```text
-ws test-live debian
-ws test-live centos
-ws test-live ubuntu
-```
-
-For direct Ansible runs, execute the playbooks from the repository root:
-
-```text
-ansible-playbook -i tests/inventory tests/playbook.yml
-```
-
-Run one family only:
-
-```text
-ansible-playbook -i tests/inventory tests/playbook.yml --limit debian
-ansible-playbook -i tests/inventory tests/playbook.yml --limit centos
-ansible-playbook -i tests/inventory tests/playbook.yml --limit ubuntu
+WS_PLAYBOOK_LIMIT=debian ws ansible playbook tests/playbook.yml tests/inventory
+WS_PLAYBOOK_LIMIT=centos ws ansible playbook tests/playbook.yml tests/inventory
+WS_PLAYBOOK_LIMIT=ubuntu ws ansible playbook tests/playbook.yml tests/inventory
 ```
 
 `tests/inventory` disables local SSH proxy configuration for the temporary
@@ -164,20 +205,31 @@ The live playbook:
 - validates SSH agent access with the selected DigitalOcean SSH key
 - verifies outbound routing through the Reserved IP
 
-The live-test path creates real provider resources, validates them, and then
-hands off to the cleanup playbook whether the validation succeeds or fails.
+The `full-cycle` path creates real provider resources, validates them, and then
+hands off to the cleanup playbook whether validation succeeds or fails. The
+`provision` path stops after validation so operators can inspect the resources
+before running `cleanup`.
+
+The provisioning phase creates the temporary Droplets, prepares SSH access,
+runs the role, validates routing, and then hands the full-cycle path to cleanup.
 
 ```mermaid
 flowchart LR
-  accTitle: DigitalOcean Reserved IP live-test flow
-  accDescr: Shows the Workspace live-test sequence from setup through cleanup.
-  setup["Load local test credentials"] --> provision["Create DigitalOcean droplets"]
-  provision --> ssh["Wait for SSH and install Python"]
-  ssh --> role["Run Reserved IP role"]
-  role --> verify["Verify Reserved IP routing"]
-  verify --> cleanup["Run cleanup playbook"]
+  setup["Credentials"] --> provision["Droplets"]
+  provision --> prepare["SSH and Python"]
+  prepare --> role["Run role"]
+  role --> verify["Verify routing"]
+  verify --> cleanup["Cleanup playbook"]
   role -->|Failure| cleanup
-  cleanup --> droplets["Delete droplets and Reserved IPs"]
+```
+
+The cleanup phase starts from the same handoff node and removes the temporary
+DigitalOcean resources.
+
+```mermaid
+flowchart LR
+  cleanup["Cleanup playbook"] --> droplets["Delete droplets"]
+  droplets --> reserved_ips["Delete Reserved IPs"]
 ```
 
 ## Jenkinsfile Lint
@@ -194,32 +246,33 @@ and runs the helper inside the `console` container.
 
 ## Clean Up
 
-DigitalOcean live tests run cleanup automatically. If a live run is interrupted,
-destroy all test droplets and Reserved IPs with Workspace:
+If a live run is interrupted, or after a manual `provision` inspection, destroy
+all test Droplets and Reserved IPs with Workspace:
 
 ```text
-ws cleanup-live all
+ws test-live cleanup all
 ```
 
 Clean up one family only:
 
 ```text
-ws cleanup-live debian
-ws cleanup-live centos
-ws cleanup-live ubuntu
+ws test-live cleanup debian
+ws test-live cleanup centos
+ws test-live cleanup ubuntu
 ```
 
-For direct Ansible runs:
+To run only the cleanup playbook through Workspace:
 
 ```text
-ansible-playbook -i tests/inventory tests/playbook_cleanup.yml
+ws ansible playbook tests/playbook_cleanup.yml tests/inventory
 ```
 
 If a single-family run fails mid-flight, clean up with the matching limit
 before retrying:
 
 ```text
-ansible-playbook -i tests/inventory tests/playbook_cleanup.yml --limit debian
+WS_PLAYBOOK_LIMIT=debian ws ansible playbook \
+  tests/playbook_cleanup.yml tests/inventory
 ```
 
 ## Outbound Routing Verification

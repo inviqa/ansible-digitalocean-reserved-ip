@@ -16,7 +16,6 @@
       ansible.builtin.set_fact:
         do_ssh_keys: "{{ digitalocean_reserved_ip_test_do_ssh_keys_from_env }}"
       when: digitalocean_reserved_ip_test_do_ssh_keys_from_env | length > 0
-      no_log: true
 
     - name: Validate DigitalOcean test credentials
       ansible.builtin.include_tasks: tasks/validate_digitalocean_credentials.yml

@@ -31,7 +31,8 @@
       }}
   when: digitalocean_reserved_ip_test_ssh_key_selector | length > 0
   delegate_to: localhost
-  no_log: true
+  loop_control:
+    label: "{{ digitalocean_reserved_ip_test_ssh_key_selector }}"
 
 - name: Gather DigitalOcean SSH keys
   digitalocean.cloud.ssh_keys_info:
@@ -54,7 +55,8 @@
       }}
   loop: "{{ digitalocean_reserved_ip_test_do_ssh_keys.ssh_keys }}"
   delegate_to: localhost
-  no_log: true
+  loop_control:
+    label: "{{ item.name }} ({{ item.fingerprint }})"
   when: >-
     (item.id | string) in digitalocean_reserved_ip_test_ssh_key_selectors
     or item.fingerprint in digitalocean_reserved_ip_test_ssh_key_selectors

@@ -105,27 +105,43 @@ Required:
 12. Do not hand-edit generated or vendored content under `.ansible/`; update the
     role source files in the repository root and regenerate or reinstall test
     dependencies when needed.
-13. When renaming externally created live-test resources, keep cleanup tasks
+13. Keep Workspace container validation isolated from host-generated `.ansible/`
+    cache paths; container Ansible home and role paths should stay inside the
+    container user home unless a generated cache path is intentionally tested.
+14. When renaming externally created live-test resources, keep cleanup tasks
     compatible with the previous names long enough to remove resources left by
     interrupted older runs.
-14. When adding cloud quota or allowance preflight checks, run current-resource
+15. When adding cloud quota or allowance preflight checks, run current-resource
     discovery first and gate only the creation path so idempotent re-runs do
     not fail when the account is already at quota.
-15. Test rescue blocks must re-raise or fail after logging unless the recovered
+16. Test rescue blocks must re-raise or fail after logging unless the recovered
     state is intentionally acceptable and documented in the task.
-16. When parsing provider metadata booleans, compare normalized expected values
+17. For credential validation, keep secret-bearing API calls and variable loads
+    behind `no_log`, but leave non-secret assertion guidance visible so
+    operators can fix missing or invalid local configuration.
+18. When parsing provider metadata booleans, compare normalized expected values
     instead of relying on broad truthiness filters for arbitrary strings.
-17. When editing network configuration, replace only the route or setting owned
+19. When editing network configuration, replace only the route or setting owned
     by this role and preserve unrelated existing entries.
-18. When changing Jenkinsfile publication or live-test behavior, keep
+20. Do not present Workspace `%` argument wrappers as quote-preserving
+    pass-throughs unless a regression proves quoted arguments survive. Prefer a
+    dedicated command or an interactive shell for shell-quoted command lines.
+21. Keep tracked override examples inert by default. Optional provider
+    resources, such as DigitalOcean project assignment, must stay blank unless
+    the operator explicitly configures a real existing value.
+22. When changing Jenkinsfile publication or live-test behavior, keep
     `docs/jenkins-ci.md`, `docs/ansible-galaxy-release.md`, and `README.md`
     aligned with the actual split between Jenkins parameters, credential
     bindings, and Workspace commands.
-19. Jenkins operator choices must remain per-build controls, not fixed
+23. Jenkins environment and credential requirements should stay declared near
+    the top of `Jenkinsfile` in the top-level `environment` block so required
+    inputs are visible as soon as the file is opened and stage blocks stay
+    small. Prefer this style for new environment values too.
+24. Jenkins operator choices must remain per-build controls, not fixed
     credential-style environment values. Keep live-test enablement and target,
     release version selection, and GitHub/Galaxy publication gates as build
     parameters or an equivalent explicit Jenkins input surface.
-20. Use `include_tasks` instead of `import_tasks` when the included task file
+25. Use `include_tasks` instead of `import_tasks` when the included task file
     contains `ansible.builtin.meta` tasks such as `reset_connection` and the
     include site has a `when` condition. Static imports propagate the condition
     to every imported task, and Ansible warns because `reset_connection` does

@@ -114,22 +114,32 @@ configures the droplet to route all outbound traffic through the Reserved IP
 using the anchor gateway, following the
 [official DigitalOcean Reserved IP documentation](https://docs.digitalocean.com/networking/reserved-ips/#reserved-ips-and-outbound-traffic).
 
-The routing flow below shows the role-specific SSH handoff and operating-system
-branch before the immediate and persistent route changes.
+The routing flows below show the role-specific SSH handoff and
+operating-system branch before the immediate and persistent route changes.
+
+The handoff phase discovers the anchor gateway and moves Ansible management to
+the Reserved IP before changing routing.
 
 ```mermaid
 flowchart LR
-  metadata["Retrieve anchor gateway"]
-  handoff["Switch Ansible to Reserved IP"]
+  metadata["Anchor gateway"]
+  handoff["SSH via Reserved IP"]
   os_family{"OS family?"}
-  immediate["Replace default route now"]
-  netplan["Persist route in netplan"]
-  nmcli["Persist gateway with NetworkManager"]
-  reboot["Reboot applies route"]
-  verify["Verify egress IP"]
-
   metadata --> handoff
   handoff --> os_family
+```
+
+The routing phase then follows the operating-system-specific persistence path
+and verifies the resulting egress address.
+
+```mermaid
+flowchart LR
+  os_family{"OS family?"}
+  immediate["Route now"]
+  netplan["Persist netplan"]
+  nmcli["Persist NM gateway"]
+  reboot["Reboot applies route"]
+  verify["Verify egress IP"]
   os_family -->|Debian or Ubuntu| immediate
   immediate --> netplan
   os_family -->|Red Hat| nmcli
@@ -231,7 +241,8 @@ If you install the published role under its current namespace, replace
 The current test workflow is documented in [docs/testing.md](docs/testing.md).
 It covers Workspace commands, DigitalOcean live tests, Jenkinsfile lint,
 cleanup, DigitalOcean project assignment for test droplets, the Workspace CLI
-install command, and direct Ansible execution with `--limit`.
+install command, and manual playbook runs through `ws ansible playbook` with
+`WS_PLAYBOOK_LIMIT`.
 
 ## Development notes
 
@@ -240,7 +251,9 @@ install command, and direct Ansible execution with `--limit`.
 - `tests/README.md` points to the maintained testing documentation in
   `docs/testing.md`.
 - `workspace.yml` provides the preferred local test and release command surface:
-  `ws ansible-lint`, `ws syntax`, `ws test-live all`, and the release
+  `ws ansible lint`, `ws ansible syntax`,
+  `ws ansible playbook <playbook> <inventory>`,
+  `ws test-live provision|cleanup|full-cycle <target>`, and the release
   preflight commands documented below.
 - The repo is being prepared for Galaxy publication, so the metadata and
   documentation are intentionally kept explicit.
@@ -259,8 +272,8 @@ install command, and direct Ansible execution with `--limit`.
   Galaxy import flow.
 - Workspace commands keep local and Jenkins release behavior aligned:
   `ws github release check`, `ws github release publish`,
-  `ws ansible-galaxy check-token`, `ws ansible-galaxy info`, and
-  `ws ansible-galaxy publish`.
+  `ws ansible galaxy check-token`, `ws ansible galaxy info`, and
+  `ws ansible galaxy publish`.
 - Galaxy publishing reads `ansible.galaxy.token` from
   `workspace.override.yml` or `ANSIBLE_GALAXY_TOKEN`; Jenkins uses the
   `ansible-roles-galaxy-token` Secret text credential.
