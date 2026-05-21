@@ -8,6 +8,8 @@
   output visible, while keeping DigitalOcean API key retrieval hidden.
 - Kept optional DigitalOcean project assignment inert in tracked Workspace
   examples unless an operator configures an existing project.
+- Set the Jenkins live-test DigitalOcean project name to `Inviqa Sandbox` in
+  the top-level pipeline environment.
 - Kept non-secret DigitalOcean credential setup guidance visible while
   preserving `no_log` on token-bearing API checks.
 

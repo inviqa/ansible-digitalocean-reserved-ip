@@ -115,8 +115,8 @@ Recommended Jenkins configuration:
   - Ansible Galaxy API token for the `inviqa` namespace, preferably loaded by a
     dedicated publishing account rather than a personal maintainer account
 
-The credential bindings and Workspace-facing environment variables are defined
-at the top of `Jenkinsfile`:
+The credential bindings and fixed Workspace-facing environment variables are
+defined at the top of `Jenkinsfile`:
 
 | Placeholder | Jenkins credential type | Purpose |
 | --- | --- | --- |
@@ -124,6 +124,7 @@ at the top of `Jenkinsfile`:
 | `ansible-roles-galaxy-token` | Secret text | Ansible Galaxy API token used to import the role after the GitHub release exists. |
 | `ansible-roles-digitalocean-oauth-token` | Secret text | Shared DigitalOcean API token for Ansible role live tests. |
 | `ansible-roles-tests-digitalocean-ssh-key-id` | Secret text | Comma-separated DigitalOcean SSH key IDs or fingerprints. |
+| `DIGITAL_OCEAN_PROJECT_NAME` | Literal environment value | DigitalOcean project name, `Inviqa Sandbox`, used to assign live-test Droplets. |
 | `ansible-roles-test-ssh-private-key` | SSH username with private key | Private key loaded for live test droplet access. |
 | `inviqa-slack-integration-token` | Secret text | Slack token used for Jenkins failure notifications. |
 
@@ -146,8 +147,9 @@ example, they can disable live tests, run only the `centos` target, publish a
 specific `RELEASE_VERSION`, or reimport Galaxy while skipping GitHub release
 creation.
 
-All credentials above must exist before the pipeline starts. Jenkins binds them
-once in the top-level environment. `ws console` is the single Workspace
+All credential IDs above must exist before the pipeline starts. Jenkins binds
+them once in the top-level environment and also defines the fixed
+`DIGITAL_OCEAN_PROJECT_NAME` value there. `ws console` is the single Workspace
 entrypoint that forwards matching environment variables into commands executed
 inside the `console` container.
 

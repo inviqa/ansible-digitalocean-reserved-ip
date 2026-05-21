@@ -12,6 +12,7 @@ pipeline {
         ANSIBLE_GALAXY_TOKEN = credentials('ansible-roles-galaxy-token')
         DIGITAL_OCEAN_SSH_KEYS = credentials('ansible-roles-tests-digitalocean-ssh-key-id')
         DIGITAL_OCEAN_API_TOKEN = credentials('ansible-roles-digitalocean-oauth-token')
+        DIGITAL_OCEAN_PROJECT_NAME = 'Inviqa Sandbox'
         GITHUB_TOKEN = credentials('inviqa-ansible-roles-releases')
         SLACK_NOTIFICATION_CHANNEL = 'ops-integrations'
         SLACK_NOTIFICATIONS_ENABLED = 'true'
