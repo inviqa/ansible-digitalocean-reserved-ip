@@ -25,21 +25,39 @@
   delegate_to: localhost
   register: reserved_ip_host_keys
   changed_when: false
+  failed_when: >-
+    (
+      reserved_ip_host_keys.stdout_lines | default([])
+      | reject('match', '^#')
+      | reject('equalto', '')
+      | list
+      | length
+    ) == 0
   retries: 5
   delay: 3
-  until: reserved_ip_host_keys.stdout | length > 0
+  until: >-
+    (
+      reserved_ip_host_keys.stdout_lines | default([])
+      | reject('match', '^#')
+      | reject('equalto', '')
+      | list
+      | length
+    ) > 0
+
+- name: Store SSH host keys scanned for the Reserved IP
+  ansible.builtin.set_fact:
+    reserved_ip_scanned_host_keys: >-
+      {{
+        reserved_ip_host_keys.stdout_lines | default([])
+        | reject('match', '^#')
+        | reject('equalto', '')
+        | list
+      }}
 
 - name: Write SSH host keys for the Reserved IP to the temporary known_hosts file
   ansible.builtin.copy:
     content: >-
-      {{
-        (
-          reserved_ip_host_keys.stdout_lines
-          | reject('match', '^#')
-          | reject('equalto', '')
-          | join('\n')
-        ) ~ '\n'
-      }}
+      {{ (reserved_ip_scanned_host_keys | join('\n')) ~ '\n' }}
     dest: "{{ reserved_ip_known_hosts_file }}"
     mode: '0600'
   delegate_to: localhost

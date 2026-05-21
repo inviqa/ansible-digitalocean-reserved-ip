@@ -51,6 +51,8 @@
   tests and waited for post-cutover SSH readiness before continuing
   Debian-family routing configuration, with clearer task names for TCP and SSH
   readiness checks.
+- Hardened the Reserved IP SSH host-key scan so banner-only `ssh-keyscan`
+  output is retried instead of being treated as usable host-key material.
 
 ### Documentation and Release Readiness
 
