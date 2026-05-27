@@ -35,52 +35,24 @@
     reserved_ip_is_assigned_to_this_droplet: true
   when: droplet_id_associated_to_reserved_ip | string == digitalocean_reserved_ip_droplet_id | string
 
-- name: Unassign the Reserved IP from any other droplet
-  ansible.builtin.uri:
-    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ digitalocean_reserved_ip_effective_address }}/actions"
-    headers:
-      Content-Type: 'application/json'
-      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
-    body_format: json
-    body:
-      type: 'unassign'
-    method: POST
-    follow_redirects: all
-    return_content: true
-    status_code:
-      - 200
-      - 201
-    timeout: 60
-  delegate_to: localhost
-  register: do_reserved_ip_unassign_action_json_response
-  no_log: true
-  when: reserved_ip_is_assigned and not reserved_ip_is_assigned_to_this_droplet
-
-- name: Give DigitalOcean time to process the unassign request
-  ansible.builtin.pause:
-    seconds: 3
-
 - name: Assign the Reserved IP to the requested droplet
-  ansible.builtin.uri:
-    url: "{{ digitalocean_reserved_ip_api_base_url }}/reserved_ips/{{ digitalocean_reserved_ip_effective_address }}/actions"
-    headers:
-      Content-Type: 'application/json'
-      Authorization: "Bearer {{ digitalocean_reserved_ip_api_token }}"
-    body_format: json
-    body:
-      type: 'assign'
-      droplet_id: "{{ digitalocean_reserved_ip_droplet_id }}"
-    method: POST
-    follow_redirects: all
-    return_content: true
-    status_code:
-      - 200
-      - 201
-    timeout: 60
+  digitalocean.cloud.reserved_ip_assign:
+    token: "{{ digitalocean_reserved_ip_api_token }}"
+    reserved_ip: "{{ digitalocean_reserved_ip_effective_address }}"
+    droplet_id: "{{ digitalocean_reserved_ip_droplet_id | int }}"
+    timeout: 300
   delegate_to: localhost
   register: do_reserved_ip_assign_action_json_response
   no_log: true
   when: not reserved_ip_is_assigned_to_this_droplet
+
+- name: Store assigned Reserved IP response facts
+  ansible.builtin.set_fact:
+    do_droplet_reserved_ip_address: "{{ do_reserved_ip_assign_action_json_response.reserved_ip.ip }}"
+  when:
+    - do_reserved_ip_assign_action_json_response is defined
+    - do_reserved_ip_assign_action_json_response.reserved_ip is defined
+    - do_reserved_ip_assign_action_json_response.reserved_ip.ip is defined
 
 - name: Mark the Reserved IP as attached after assignment
   ansible.builtin.set_fact:

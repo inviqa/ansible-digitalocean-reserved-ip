@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Replaced the existing Reserved IP reassignment flow with the maintained
+  `digitalocean.cloud.reserved_ip_assign` module so DigitalOcean action polling
+  completes before promotion continues.
+
 ## [0.2.0] - 2026-05-20
 
 ### CI and Workspace

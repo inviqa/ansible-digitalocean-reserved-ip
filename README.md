@@ -58,6 +58,7 @@ The role is intentionally narrow in scope:
 
 - Ansible Core $\ge 2.13$
 - a DigitalOcean API token with permission to manage droplets and Reserved IPs
+- `digitalocean.cloud` collection for Reserved IP assignment actions
 - `community.general` collection (used for RedHat-family NetworkManager
   gateway persistence via `community.general.nmcli`)
 - gathered host facts when `digitalocean_reserved_ip_enable_outbound_routing` is enabled
