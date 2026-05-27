@@ -39,7 +39,7 @@
   digitalocean.cloud.reserved_ip_assign:
     token: "{{ digitalocean_reserved_ip_api_token }}"
     reserved_ip: "{{ digitalocean_reserved_ip_effective_address }}"
-    droplet_id: "{{ digitalocean_reserved_ip_droplet_id | int }}"
+    droplet_id: "{{ digitalocean_reserved_ip_droplet_id }}"
     timeout: 300
   delegate_to: localhost
   register: do_reserved_ip_assign_action_json_response

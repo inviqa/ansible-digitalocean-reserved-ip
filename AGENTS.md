@@ -148,6 +148,10 @@ Required:
     to every imported task, and Ansible warns because `reset_connection` does
     not support `when`; dynamic includes keep the condition on the include
     boundary.
+26. When passing cloud-provider identifiers into Ansible collection modules, do
+    not pre-cast them with lossy filters such as `| int`; let module argument
+    typing reject invalid values unless a prior assertion has already validated
+    the identifier.
 
 ## Changelog Policy (Always Required)
 
