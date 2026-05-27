@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1] - 2026-05-27 - Production promotion recovery, routing, and cost control
+
+- Replaced the existing Reserved IP reassignment flow with the maintained
+  `digitalocean.cloud.reserved_ip_assign` module so DigitalOcean action polling
+  completes before promotion continues.
+- Documented the `digitalocean.cloud >= 1.3.0` collection and control-node
+  Python requirements needed by the Reserved IP assignment module.
+
 ## [0.2.0] - 2026-05-20
 
 ### CI and Workspace
